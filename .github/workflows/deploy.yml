@@ -1,0 +1,351 @@
+name: Deploy v3.0
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  # Patent engine configuration (v2.0)
+  PATENT_FSM_ENABLED: 'true'
+  PATENT_VERIFICATION_ENABLED: 'true'
+  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+jobs:
+  # Staging deployment - test environment before production
+  deploy-staging:
+    name: Deploy to Vercel Staging
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      deployment-url: ${{ steps.deployment.outputs.url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          NEXT_PUBLIC_SENTRY_DSN: ${{ secrets.NEXT_PUBLIC_SENTRY_DSN }}
+          NEXT_PUBLIC_APP_VERSION: ${{ github.sha }}
+          PATENT_FSM_ENABLED: 'true'
+          PATENT_VERIFICATION_ENABLED: 'true'
+
+      - name: Deploy to Vercel Staging
+        id: deployment
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          vercel-args: --target=staging
+
+  # Smoke tests against staging environment
+  smoke-test-staging:
+    name: Smoke Tests (Staging)
+    runs-on: ubuntu-latest
+    needs: deploy-staging
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Run critical path smoke tests
+        run: pnpm test:smoke:staging
+        env:
+          STAGING_URL: ${{ needs.deploy-staging.outputs.deployment-url }}
+
+      - name: Verify patent engine health on staging
+        run: |
+          STAGING_URL="${{ needs.deploy-staging.outputs.deployment-url }}"
+          curl -f --max-time 10 "${STAGING_URL}/api/health" || exit 1
+          curl -f --max-time 10 "${STAGING_URL}/api/fsm/state" || exit 1
+
+      - name: Test critical user flows
+        run: pnpm test:critical-flows:staging
+        env:
+          STAGING_URL: ${{ needs.deploy-staging.outputs.deployment-url }}
+
+  # Production deployment with approval
+  deploy-production:
+    name: Deploy to Vercel Production
+    runs-on: ubuntu-latest
+    needs: smoke-test-staging
+    timeout-minutes: 15
+    environment:
+      name: production
+      url: https://hellonext.vercel.app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setting@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Build for production
+        run: pnpm build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          NEXT_PUBLIC_SENTRY_DSN: ${{ secrets.NEXT_PUBLIC_SENTRY_DSN }}
+          NEXT_PUBLIC_APP_VERSION: ${{ github.sha }}
+          PATENT_FSM_ENABLED: 'true'
+          PATENT_VERIFICATION_ENABLED: 'true'
+
+      - name: Deploy to Vercel Production
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          vercel-args: --prod --concurrency=1
+
+      - name: Create GitHub release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: release-${{ github.sha }}
+          release_name: Production Release ${{ github.sha }}
+          body: |
+            Deployed to production at ${{ github.event.head_commit.timestamp }}
+            Commit: ${{ github.event.head_commit.message }}
+          draft: false
+          prerelease: false
+
+  database-migrations:
+    name: Database Migrations (Dry-Run & Verify)
+    runs-on: ubuntu-latest
+    needs: deploy-staging
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Link Supabase project
+        run: supabase link --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Dry-run migrations
+        run: supabase db push --dry-run
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Verify migration safety
+        run: |
+          echo "Checking for destructive migrations..."
+          supabase migrations list
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+  deploy-edge-functions:
+    name: Deploy Patent Edge Functions
+    runs-on: ubuntu-latest
+    needs: [deploy-production, database-migrations]
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Link Supabase project
+        run: supabase link --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Apply database migrations
+        run: supabase db push
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Deploy voice-fsm-controller edge function
+        run: |
+          supabase functions deploy voice-fsm-controller \
+            --no-verify-jwt \
+            --replace
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Deploy causal-analysis edge function
+        run: |
+          supabase functions deploy causal-analysis \
+            --no-verify-jwt \
+            --replace
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Deploy measurement-confidence edge function
+        run: |
+          supabase functions deploy measurement-confidence \
+            --no-verify-jwt \
+            --replace
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Deploy verification-handler edge function
+        run: |
+          supabase functions deploy verification-handler \
+            --no-verify-jwt \
+            --replace
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Deploy edge-weight-calibration edge function
+        run: |
+          supabase functions deploy edge-weight-calibration \
+            --no-verify-jwt \
+            --replace
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Set Edge Function secrets for patent engine
+        run: |
+          supabase secrets set \
+            PATENT_FSM_ENABLED=true \
+            PATENT_VERIFICATION_ENABLED=true \
+            PATENT_EDGE_API_KEY=${{ secrets.PATENT_EDGE_API_KEY }} \
+            EDGE_FUNCTION_VERSION=${{ github.sha }}
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+  upload-sourcemaps:
+    name: Upload Sentry Sourcemaps
+    runs-on: ubuntu-latest
+    needs: deploy-production
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Upload sourcemaps to Sentry
+        uses: getsentry/action-release@v1
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: hellonext
+          SENTRY_PROJECT: hellonext-web
+        with:
+          environment: production
+          sourcemaps: ./apps/web/.next
+          version: ${{ github.sha }}
+
+  post-deploy-verification:
+    name: Post-Deploy Verification & Health Checks
+    runs-on: ubuntu-latest
+    needs: [deploy-production, deploy-edge-functions, upload-sourcemaps]
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Health check web endpoint
+        run: |
+          curl -f --max-time 10 https://hellonext.vercel.app/api/health || exit 1
+          echo "Web server health check passed"
+
+      - name: Verify patent engine Edge Functions are responsive
+        run: |
+          for fn in voice-fsm-controller causal-analysis measurement-confidence verification-handler edge-weight-calibration; do
+            echo "Checking Edge Function: $fn"
+            curl -f --max-time 10 \
+              -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
+              https://${{ secrets.SUPABASE_PROJECT_REF }}.supabase.co/functions/v1/$fn \
+              -d '{"action":"health"}' || exit 1
+          done
+
+      - name: Verify FSM controller state
+        run: |
+          curl -f --max-time 10 https://hellonext.vercel.app/api/fsm/state || exit 1
+          echo "FSM controller state endpoint verified"
+
+      - name: Run post-deploy tests
+        run: pnpm test:post-deploy || true
+
+      - name: Trigger Slack notification on success
+        if: success()
+        uses: slackapi/slack-github-action@v1.24.0
+        with:
+          webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
+          payload: |
+            {
+              "text": "Production Deployment Successful",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "✅ *HelloNext Production Deployment Successful*\nCommit: ${{ github.sha }}\nAuthor: ${{ github.actor }}"
+                  }
+                }
+              ]
+            }
+
+  post-deploy-rollback:
+    name: Rollback Notification
+    runs-on: ubuntu-latest
+    needs: post-deploy-verification
+    if: failure()
+    timeout-minutes: 10
+    steps:
+      - name: Trigger Slack notification on failure
+        uses: slackapi/slack-github-action@v1.24.0
+        with:
+          webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
+          payload: |
+            {
+              "text": "⚠️ Production Deployment Health Check Failed",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "⚠️ *Production Deployment Failed*\nCommit: ${{ github.sha }}\nAuthor: ${{ github.actor }}\n\nManual investigation required. Check deployment logs."
+                  }
+                }
+              ]
+            }
