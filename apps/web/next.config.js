@@ -75,11 +75,11 @@ const nextConfig = {
           key: 'Content-Security-Policy',
           value: [
             "default-src 'self'",
-            "script-src 'self' https://cdn.jsdelivr.net https://js.tosspayments.com https://cdn.vercel.com https://blob:",
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://js.tosspayments.com https://cdn.vercel.com https://blob:",
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
             "img-src 'self' data: blob: https: https://res.cloudinary.com",
             "media-src 'self' blob: https: https://res.cloudinary.com",
-            "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.openai.com https://*.sentry.io https://*.cloudinary.com https://api.tosspayments.com https://kapi.kakao.com",
+            "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.openai.com https://*.sentry.io https://*.cloudinary.com https://api.tosspayments.com https://kapi.kakao.com https://kauth.kakao.com",
             "font-src 'self' https://fonts.gstatic.com data:",
             "frame-src 'self' https://js.tosspayments.com https://www.youtube.com",
             "object-src 'none'",
