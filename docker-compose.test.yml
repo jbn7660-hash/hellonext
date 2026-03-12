@@ -1,0 +1,139 @@
+# ============================
+# ArcUp/HelloNext Golf Coaching Platform
+# Docker Compose - CI Testing Environment
+# Phase 6 Test Configuration
+# ============================
+
+version: '3.9'
+
+services:
+  # ============================
+  # Test Database (PostgreSQL 15)
+  # ============================
+  test-db:
+    image: postgres:15-alpine
+    container_name: arcup-test-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: arcup_test
+      POSTGRES_INITDB_ARGS: "--locale en_US.utf8 -c log_statement=all"
+
+    volumes:
+      # Database initialization scripts
+      - ./supabase/migrations:/docker-entrypoint-initdb.d:ro
+      - test-db-data:/var/lib/postgresql/data
+
+    ports:
+      - "54322:5432"
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d arcup_test"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+    networks:
+      - arcup-test-network
+
+    # Run migrations 001-017 automatically on startup
+    command:
+      - "postgres"
+      - "-c"
+      - "max_connections=200"
+      - "-c"
+      - "shared_buffers=256MB"
+
+  # ============================
+  # Test Runner (Vitest + Playwright)
+  # ============================
+  test-runner:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: builder
+    container_name: arcup-test-runner
+    working_dir: /app
+
+    environment:
+      # Database Connection
+      - DATABASE_URL=postgresql://postgres:postgres@test-db:5432/arcup_test
+      - NODE_ENV=test
+
+      # Supabase Testing
+      - NEXT_PUBLIC_SUPABASE_URL=http://localhost:54321
+      - NEXT_PUBLIC_SUPABASE_ANON_KEY=test-anon-key
+      - SUPABASE_SERVICE_ROLE_KEY=test-service-role-key
+
+      # Test Configuration
+      - CI=true
+      - VITEST_REPORTER=verbose
+
+      # Playwright Configuration
+      - PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+
+      # Feature Flags for Testing
+      - FEATURE_PATENT_ENGINE=true
+      - FEATURE_VOICE_FSM=true
+      - FEATURE_VERIFICATION_QUEUE=true
+
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+      - /ms-playwright
+
+    depends_on:
+      test-db:
+        condition: service_healthy
+
+    networks:
+      - arcup-test-network
+
+    # Run all tests with Vitest and Playwright
+    command: pnpm test:ci
+
+  # ============================
+  # Coverage Reporter (Optional)
+  # ============================
+  coverage-reporter:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: builder
+    container_name: arcup-coverage
+    working_dir: /app
+
+    environment:
+      - NODE_ENV=test
+      - CI=true
+
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+
+    networks:
+      - arcup-test-network
+
+    command: pnpm test:coverage
+
+    # Only runs if test-runner succeeds
+    depends_on:
+      test-runner:
+        condition: service_completed_successfully
+
+# ============================
+# Networks
+# ============================
+networks:
+  arcup-test-network:
+    driver: bridge
+
+# ============================
+# Volumes
+# ============================
+volumes:
+  test-db-data:
+    driver: local

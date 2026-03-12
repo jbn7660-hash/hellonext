@@ -1,0 +1,92 @@
+{
+  "expo": {
+    "name": "HelloNext",
+    "slug": "hellonext",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icons/icon.png",
+    "scheme": "hellonext",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/images/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#22c55e"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.hellonext.golf",
+      "buildNumber": "1",
+      "infoPlist": {
+        "NSCameraUsageDescription": "스윙 촬영을 위해 카메라 접근이 필요합니다.",
+        "NSMicrophoneUsageDescription": "음성 메모 녹음을 위해 마이크 접근이 필요합니다.",
+        "NSPhotoLibraryUsageDescription": "스윙 영상을 앨범에서 불러오기 위해 필요합니다.",
+        "UIBackgroundModes": ["audio", "fetch", "remote-notification"]
+      },
+      "config": {
+        "usesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icons/adaptive-icon.png",
+        "backgroundColor": "#22c55e"
+      },
+      "package": "com.hellonext.golf",
+      "versionCode": 1,
+      "permissions": [
+        "CAMERA",
+        "RECORD_AUDIO",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "VIBRATE",
+        "RECEIVE_BOOT_COMPLETED"
+      ],
+      "googleServicesFile": "./google-services.json"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "favicon": "./assets/icons/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-camera",
+      "expo-av",
+      "expo-notifications",
+      "expo-secure-store",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splash.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#22c55e"
+        }
+      ],
+      [
+        "expo-updates",
+        {
+          "username": "hellonext"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "hellonext-golf-app"
+      }
+    },
+    "updates": {
+      "url": "https://u.expo.dev/hellonext-golf-app"
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    }
+  }
+}

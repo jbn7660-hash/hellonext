@@ -1,0 +1,2989 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HelloNext — UX Wireframe v4.0 (Phase 4: Final Clean Architecture)</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  :root {
+    /* Light Mode — High Contrast for Outdoor Visibility */
+    --bg: #F4F7F9; --surface: #FFFFFF; --card: #FFFFFF; --card2: #F1F5F9;
+    --accent: #059669; --gold: #D97706; --blue: #2563EB; --coral: #DC2626;
+    --orange: #EA580C; --white: #FFFFFF; --muted: #6B7280; --light: #E5E7EB;
+    --text-main: #111827; --border: #E5E7EB;
+    --radius: 16px; --radius-sm: 10px;
+    --shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03);
+  }
+  body { font-family: -apple-system, 'Pretendard', 'Noto Sans KR', sans-serif; background: var(--bg); color: var(--text-main); overflow-x: hidden; }
+
+  /* ── Top Control Bar ── */
+  .control-bar { position: fixed; top:0; left:0; right:0; z-index: 1000; background: var(--surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 10px 16px; gap: 12px; box-shadow: var(--shadow); }
+  .control-bar .logo { font-weight: 800; font-size: 18px; color: var(--accent); }
+  .role-toggle { display: flex; background: var(--light); border-radius: 20px; overflow: hidden; }
+  .role-toggle button { padding: 7px 16px; border: none; background: transparent; color: var(--muted); font-size: 13px; font-weight: 700; cursor: pointer; transition: all .2s; }
+  .role-toggle button.active { background: var(--text-main); color: var(--white); border-radius: 20px; }
+  .flow-btn { padding: 6px 14px; border: 1px solid var(--accent); border-radius: 20px; background: transparent; color: var(--accent); font-size: 12px; font-weight: 600; cursor: pointer; margin-left: auto; transition: all .2s; }
+  .flow-btn:hover { background: var(--accent); color: var(--white); }
+  .screen-label { font-size: 13px; color: var(--muted); margin-left: 8px; font-weight: 600; }
+
+  /* ── Phone Frame ── */
+  .phone-container { display: flex; justify-content: center; align-items: flex-start; padding: 70px 20px 20px; min-height: 100vh; }
+  .phone-frame { width: 390px; height: 844px; background: var(--bg); border-radius: 40px; border: 8px solid #1F2937; overflow: hidden; position: relative; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); }
+  .phone-notch { width: 160px; height: 32px; background: #1F2937; border-radius: 0 0 20px 20px; margin: 0 auto; position: absolute; left: 50%; transform: translateX(-50%); z-index: 10; }
+  .phone-screen { height: calc(100% - 32px - 80px); overflow-y: auto; padding: 32px 0 0 0; }
+  .phone-screen::-webkit-scrollbar { width: 0; }
+
+  /* ── Bottom Tab Bar ── */
+  .tab-bar { position: absolute; bottom: 0; left: 0; right: 0; height: 80px; background: var(--surface); border-top: 1px solid var(--border); display: flex; padding: 10px 0 20px; box-shadow: 0 -4px 6px -1px rgba(0,0,0,0.05); }
+  .tab-item { flex:1; display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; transition: all .15s; }
+  .tab-item svg { width: 24px; height: 24px; fill: var(--muted); transition: fill .15s; }
+  .tab-item span { font-size: 11px; color: var(--muted); font-weight: 600; transition: color .15s; }
+  .tab-item.active svg { fill: var(--text-main); }
+  .tab-item.active span { color: var(--text-main); }
+
+  /* ── Common Screen Elements ── */
+  /* ── 개선안 4: Visual Identity — Green Gradient Header ── */
+  .screen-header { padding: 20px 20px 16px; background: linear-gradient(135deg, #059669 0%, #10B981 50%, #34D399 100%); border-bottom: none; position:relative; overflow:hidden; }
+  .screen-header::after { content:''; position:absolute; right:-20px; bottom:-10px; width:120px; height:120px; opacity:.08; background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='60' cy='60' r='8' fill='white'/%3E%3Cpath d='M60 52 Q55 30 40 20' stroke='white' stroke-width='3' fill='none'/%3E%3Cpath d='M37 22 Q32 18 28 20 Q24 22 30 26 Q26 20 22 22 Q18 24 26 28 Z' fill='white'/%3E%3C/svg%3E") no-repeat center/contain; }
+  .screen-header h1 { font-size: 24px; font-weight: 800; letter-spacing: -0.5px; color: white; }
+  .screen-header p { font-size: 14px; color: rgba(255,255,255,.85); margin-top: 4px; font-weight: 500; }
+  /* card accent divider */
+  .wf-card-divider { height:2px; background:linear-gradient(90deg,var(--accent),transparent); margin:14px 0; border-radius:1px; }
+  .screen-content { padding: 16px 20px 40px; }
+
+  .wf-card { background: var(--card); border-radius: var(--radius); padding: 18px; margin-bottom: 14px; cursor: pointer; transition: all .2s; border: 1px solid var(--border); box-shadow: var(--shadow); }
+  .wf-card:active { transform: scale(0.98); }
+  .wf-card-title { font-size: 16px; font-weight: 700; margin-bottom: 6px; color: var(--text-main); }
+  .wf-card-sub { font-size: 13px; color: var(--muted); line-height: 1.4; }
+  .wf-card-accent { border-left: 4px solid var(--accent); }
+  .wf-card-gold { border-left: 4px solid var(--gold); }
+  .wf-card-blue { border-left: 4px solid var(--blue); }
+  .wf-card-coral { border-left: 4px solid var(--coral); }
+
+  .wf-section { font-size: 14px; font-weight: 800; color: var(--text-main); margin: 24px 0 12px; display: flex; justify-content: space-between; align-items: center; }
+
+  .wf-stat-row { display: flex; gap: 10px; margin-bottom: 16px; }
+  .wf-stat { flex:1; background: var(--card); border-radius: var(--radius-sm); padding: 16px 12px; text-align: center; border: 1px solid var(--border); box-shadow: var(--shadow); }
+  .wf-stat .val { font-size: 22px; font-weight: 800; color: var(--text-main); }
+  .wf-stat .label { font-size: 12px; color: var(--muted); margin-top: 4px; font-weight: 600; }
+
+  .wf-list-item { display: flex; align-items: center; gap: 14px; padding: 16px; background: var(--card); border-radius: var(--radius-sm); margin-bottom: 10px; cursor: pointer; border: 1px solid var(--border); box-shadow: var(--shadow); transition: background .15s; }
+  .wf-list-item:hover { background: var(--card2); }
+  .wf-avatar { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 800; flex-shrink: 0; }
+  .wf-list-info { flex:1; }
+  .wf-list-info .name { font-size: 15px; font-weight: 700; color: var(--text-main); }
+  .wf-list-info .meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .wf-badge { padding: 4px 10px; border-radius: 10px; font-size: 11px; font-weight: 700; }
+
+  .wf-btn { width: 100%; padding: 16px; border-radius: var(--radius-sm); border: none; font-size: 15px; font-weight: 800; cursor: pointer; transition: all .2s; margin-bottom: 10px; text-align: center; }
+  .wf-btn-primary { background: var(--accent); color: var(--white); box-shadow: 0 4px 12px rgba(5,150,105,0.3); }
+  .wf-btn-secondary { background: var(--card); color: var(--text-main); border: 1px solid var(--border); }
+  .wf-btn-premium { background: var(--text-main); color: var(--gold); border: 1px solid var(--gold); }
+  .wf-btn:active { transform: scale(0.98); }
+
+  .wf-input { width: 100%; padding: 14px 16px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-main); font-size: 14px; margin-bottom: 10px; outline: none; }
+  .wf-input:focus { border-color: var(--accent); }
+  .wf-input::placeholder { color: var(--muted); }
+
+  .wf-progress-bar { height: 6px; background: var(--light); border-radius: 3px; overflow: hidden; margin: 8px 0; }
+  .wf-progress-fill { height: 100%; border-radius: 3px; transition: width .3s; }
+
+  .wf-chart-placeholder { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); height: 160px; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 13px; margin-bottom: 12px; position: relative; overflow: hidden; box-shadow: var(--shadow); }
+  .wf-chart-placeholder::after { content: ''; position: absolute; bottom: 20px; left: 20px; right: 20px; height: 80px; border-bottom: 2px solid var(--accent); border-left: 2px solid var(--border); }
+
+  .wf-tag { display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 700; margin: 2px 4px 2px 0; }
+
+  /* ── Confidence Tiers ── */
+  .tier-high { background: #D1FAE5; color: var(--accent); }
+  .tier-mid { background: #FEF3C7; color: var(--gold); }
+  .tier-low { background: #FEE2E2; color: var(--coral); }
+
+  /* ── Premium Card ── */
+  .bg-premium { background: linear-gradient(135deg, #111827, #374151); color: white; border-color: transparent; }
+  .bg-premium .wf-card-title, .bg-premium .wf-card-sub { color: white; }
+
+  /* ── Sales Module ── */
+  .sales-module-box { border: 2px dashed var(--accent); border-radius: var(--radius-sm); padding: 16px; text-align: center; background: #ECFDF5; color: var(--accent); font-weight: 700; cursor: pointer; margin-top: 12px; }
+
+  /* ── Flow Diagram ── */
+  .flow-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.85); z-index: 2000; overflow: auto; display: none; }
+  .flow-overlay.show { display: block; }
+  .flow-close { position: fixed; top: 16px; right: 20px; z-index: 2001; background: var(--coral); border: none; color: white; width: 36px; height: 36px; border-radius: 50%; font-size: 18px; cursor: pointer; }
+  .flow-content { padding: 60px 40px 40px; max-width: 1200px; margin: 0 auto; color: white; }
+  .flow-content h2 { font-size: 24px; margin-bottom: 24px; color: var(--accent); }
+  .flow-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 40px; }
+  .flow-node { background: #1F2937; border-radius: var(--radius); padding: 16px; cursor: pointer; transition: all .2s; border: 2px solid transparent; color: white; }
+  .flow-node:hover { border-color: var(--accent); transform: translateY(-2px); }
+  .flow-node .fn-role { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+  .flow-node .fn-name { font-size: 15px; font-weight: 700; margin-bottom: 6px; color: white; }
+  .flow-node .fn-desc { font-size: 11px; color: #9CA3AF; line-height: 1.5; }
+  .flow-node .fn-elements { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 4px; }
+  .flow-arrow { display: flex; align-items: center; justify-content: center; color: var(--accent); font-size: 20px; padding: 8px; }
+
+  /* ── Annotations ── */
+  .annotation { position: relative; }
+  .annotation::before { content: attr(data-note); position: absolute; top: -6px; right: -4px; background: var(--gold); color: white; font-size: 9px; font-weight: 800; padding: 2px 6px; border-radius: 8px; z-index: 5; pointer-events: none; }
+
+  /* ── FAB ── */
+  .wf-fab { position: absolute; bottom: 94px; right: 20px; width: 56px; height: 56px; background: var(--accent); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 16px rgba(5,150,105,.4); cursor: pointer; z-index: 5; transition: all .15s; }
+  .wf-fab:hover { transform: scale(1.1); }
+  .wf-fab svg { width: 24px; height: 24px; fill: white; }
+
+  /* ── Skeleton Shimmer ── */
+  .wf-skeleton { background: linear-gradient(90deg, var(--card) 25%, var(--card2) 50%, var(--card) 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: var(--radius-sm); }
+  @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+  /* ── Sub Header ── */
+  .sub-header { display:flex; align-items:center; gap:10px; padding:14px 20px; background:var(--surface); border-bottom:1px solid var(--border); position:sticky; top:0; z-index:5; }
+  .sub-header .back-btn { width:36px; height:36px; border-radius:50%; background:var(--light); border:none; color:var(--text-main); font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center; min-width:36px; }
+  .sub-header .back-btn:hover { background:var(--accent); color:white; }
+  .sub-header h2 { font-size:17px; font-weight:700; flex:1; color:var(--text-main); }
+  .sub-header .action-btn { padding:6px 12px; border-radius:16px; border:none; font-size:12px; font-weight:700; cursor:pointer; }
+  .wf-toggle { width:44px; height:24px; border-radius:12px; position:relative; cursor:pointer; display:inline-block; }
+  .wf-toggle.on { background:var(--accent); }
+  .wf-toggle.off { background:var(--muted); }
+  .wf-module { background:var(--card); border:1px dashed var(--accent); border-radius:var(--radius); padding:14px; margin-bottom:10px; cursor:grab; box-shadow:var(--shadow); }
+  .wf-module:hover { border-style:solid; }
+  .wf-timeline { position:relative; padding-left:24px; }
+  .wf-timeline::before { content:''; position:absolute; left:8px; top:0; bottom:0; width:2px; background:var(--light); }
+  .wf-tl-item { position:relative; margin-bottom:16px; }
+  .wf-tl-item::before { content:''; position:absolute; left:-20px; top:4px; width:12px; height:12px; border-radius:50%; border:2px solid var(--accent); background:var(--surface); }
+  .wf-audio { display:flex; align-items:center; gap:12px; background:var(--card); border-radius:var(--radius); padding:14px; margin-bottom:12px; }
+  .wf-audio-btn { width:40px; height:40px; border-radius:50%; background:var(--accent); border:none; color:white; font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .wf-audio-wave { flex:1; height:32px; background:var(--light); border-radius:4px; position:relative; overflow:hidden; }
+  .wf-audio-wave::after { content:''; position:absolute; left:0; top:0; height:100%; width:40%; background:var(--accent); opacity:.3; border-radius:4px; }
+  .wf-recording { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:40px 20px; }
+  .wf-rec-circle { width:120px; height:120px; border-radius:50%; background:rgba(220,38,38,.08); border:3px solid var(--coral); display:flex; align-items:center; justify-content:center; animation:pulse 1.5s infinite; }
+  @keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.05)} }
+
+  /* ── Offline & Sync ── */
+  .offline-badge { display:none; padding:4px 10px; border-radius:12px; background:#FEF3C7; color:var(--gold); font-size:11px; font-weight:700; white-space:nowrap; }
+  .offline-badge.show { display:inline-flex; align-items:center; gap:4px; }
+  .wifi-badge { position:absolute; top:6px; right:6px; background:#FEF3C7; color:var(--gold); font-size:9px; font-weight:700; padding:2px 6px; border-radius:8px; display:flex; align-items:center; gap:2px; }
+  .sync-bar { height:4px; background:var(--light); border-radius:2px; overflow:hidden; margin:4px 0; }
+  .sync-bar-fill { height:100%; background:var(--accent); border-radius:2px; transition:width .5s; animation:syncPulse 2s infinite; }
+  @keyframes syncPulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+
+  /* ── Onboarding ── */
+  .ob-center { display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; padding:40px 24px; text-align:center; }
+  .ob-icon { width:80px; height:80px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:36px; margin-bottom:20px; }
+  .ob-title { font-size:22px; font-weight:800; margin-bottom:8px; color:var(--text-main); }
+  .ob-desc { font-size:14px; color:var(--muted); line-height:1.6; margin-bottom:24px; }
+  .confetti { position:absolute; font-size:24px; animation:confettiFall 2s ease-in forwards; }
+  @keyframes confettiFall { 0%{opacity:1;transform:translateY(0) rotate(0)} 100%{opacity:0;transform:translateY(200px) rotate(720deg)} }
+
+  /* ── 개선안 2: Celebration Moment System ── */
+  .celebration-overlay { position:absolute; inset:0; z-index:30; pointer-events:none; overflow:hidden; }
+  .celebration-overlay .confetti-piece { position:absolute; width:10px; height:10px; border-radius:2px; animation:confettiPop 1.8s ease-out forwards; }
+  @keyframes confettiPop { 0%{opacity:1;transform:translateY(0) rotate(0) scale(1)} 60%{opacity:1} 100%{opacity:0;transform:translateY(280px) rotate(720deg) scale(.3)} }
+  .celebration-msg { position:absolute; top:30%; left:50%; transform:translate(-50%,-50%); background:var(--surface); border-radius:var(--radius); padding:24px 32px; text-align:center; box-shadow:0 12px 40px rgba(0,0,0,.15); z-index:31; pointer-events:auto; animation:celebPop .4s cubic-bezier(.34,1.56,.64,1); }
+  @keyframes celebPop { 0%{opacity:0;transform:translate(-50%,-50%) scale(.5)} 100%{opacity:1;transform:translate(-50%,-50%) scale(1)} }
+  .celeb-badge-icon { width:64px; height:64px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:32px; margin:0 auto 12px; }
+  .celeb-close { margin-top:12px; padding:8px 24px; border-radius:20px; border:none; background:var(--accent); color:white; font-size:13px; font-weight:700; cursor:pointer; }
+
+  /* ── Conflict Modal ── */
+  .conflict-overlay { position:absolute; inset:0; background:rgba(0,0,0,.7); z-index:20; display:flex; align-items:center; justify-content:center; padding:20px; }
+  .conflict-modal { background:var(--surface); border-radius:var(--radius); padding:20px; width:100%; max-height:80%; overflow-y:auto; border:1px solid var(--gold); }
+  .diff-add { background:rgba(46,204,113,.1); border-left:3px solid var(--accent); padding:6px 10px; margin:4px 0; border-radius:4px; font-size:12px; }
+  .diff-del { background:rgba(231,76,60,.1); border-left:3px solid var(--coral); padding:6px 10px; margin:4px 0; border-radius:4px; font-size:12px; text-decoration:line-through; }
+
+  /* ── 개선안 10: Micro-animation Blueprint ── */
+  /* Screen transition slide */
+  @keyframes slideInRight { from{opacity:0;transform:translateX(30px)} to{opacity:1;transform:translateX(0)} }
+  @keyframes slideInLeft { from{opacity:0;transform:translateX(-30px)} to{opacity:1;transform:translateX(0)} }
+  .phone-screen > * { animation: slideInRight .3s ease-out; }
+  /* Count-up style for score numbers */
+  @keyframes countUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+  .wf-stat .val { animation: countUp .5s ease-out; }
+  /* Feel Check emoji bounce */
+  @keyframes emojiBounce { 0%{transform:scale(1)} 30%{transform:scale(1.15)} 60%{transform:scale(.95)} 100%{transform:scale(1)} }
+  /* Button tap ripple */
+  .wf-btn:active::after { content:''; position:absolute; inset:0; background:rgba(255,255,255,.2); border-radius:inherit; animation:ripple .15s ease-out; }
+  @keyframes ripple { from{opacity:.5;transform:scale(.8)} to{opacity:0;transform:scale(1.2)} }
+  .wf-btn { position:relative; overflow:hidden; }
+  /* Card hover lift */
+  .wf-card { transition: transform .2s ease, box-shadow .2s ease; }
+  .wf-card:hover { transform: translateY(-2px); box-shadow: 0 8px 16px -4px rgba(0,0,0,.08); }
+  /* Streak bar fill animation */
+  @keyframes barGrow { from{transform:scaleY(0)} to{transform:scaleY(1)} }
+  /* Progress ring draw animation */
+  @keyframes ringDraw { from{stroke-dasharray:0 440} }
+  /* Badge unlock glow */
+  @keyframes badgeGlow { 0%{box-shadow:0 0 0 0 rgba(5,150,105,.4)} 70%{box-shadow:0 0 0 10px rgba(5,150,105,0)} 100%{box-shadow:0 0 0 0 rgba(5,150,105,0)} }
+  /* Score change arrow pulse */
+  @keyframes arrowPulse { 0%,100%{opacity:1} 50%{opacity:.6} }
+  /* Tab bar icon bounce on active */
+  .tab-item.active svg { animation: emojiBounce .3s ease-out; }
+
+  /* ── Responsive ── */
+  @media (max-width: 600px) {
+    .phone-frame { width: 100%; height: 100vh; border-radius: 0; border: none; }
+    .phone-container { padding: 56px 0 0; }
+    .phone-notch { display: none; }
+    .phone-screen { height: calc(100vh - 56px - 80px); }
+  }
+
+  /* ── Phase 3: Utility Classes (C-02 해결) ── */
+  /* Typography utilities */
+  .u-txt-xxs { font-size:10px; color:var(--muted); }
+  .u-txt-xs  { font-size:11px; color:var(--muted); }
+  .u-txt-sm  { font-size:12px; color:var(--muted); }
+  .u-txt-md  { font-size:13px; color:var(--muted); }
+  .u-txt-md-bold { font-size:13px; font-weight:600; }
+  .u-txt-md-strong { font-size:13px; font-weight:700; }
+  .u-txt-lg  { font-size:14px; font-weight:700; }
+  .u-txt-lg-bold { font-size:14px; font-weight:800; color:var(--text-main); }
+  .u-txt-xl  { font-size:16px; font-weight:700; }
+  .u-txt-xxl { font-size:18px; font-weight:700; }
+  .u-txt-hero { font-size:22px; font-weight:800; }
+  .u-txt-score { font-size:48px; font-weight:800; }
+
+  /* Color utilities */
+  .u-c-accent { color:var(--accent); }
+  .u-c-gold   { color:var(--gold); }
+  .u-c-blue   { color:var(--blue); }
+  .u-c-coral  { color:var(--coral); }
+  .u-c-orange { color:var(--orange); }
+  .u-c-muted  { color:var(--muted); }
+  .u-c-white  { color:white; }
+
+  /* Layout utilities */
+  .u-flex-between { display:flex; justify-content:space-between; align-items:center; }
+  .u-flex-center  { display:flex; align-items:center; justify-content:center; }
+  .u-flex-gap8    { display:flex; align-items:center; gap:8px; }
+  .u-flex-gap10   { display:flex; gap:10px; }
+  .u-flex-gap12   { display:flex; gap:12px; align-items:center; }
+  .u-flex-wrap    { display:flex; flex-wrap:wrap; gap:10px; }
+  .u-text-center  { text-align:center; }
+
+  /* Spacing utilities */
+  .u-mt-4  { margin-top:4px; }
+  .u-mt-6  { margin-top:6px; }
+  .u-mt-8  { margin-top:8px; }
+  .u-mt-10 { margin-top:10px; }
+  .u-mt-12 { margin-top:12px; }
+  .u-mt-14 { margin-top:14px; }
+  .u-mt-16 { margin-top:16px; }
+  .u-mt-24 { margin-top:24px; }
+  .u-mb-4  { margin-bottom:4px; }
+  .u-mb-6  { margin-bottom:6px; }
+  .u-mb-8  { margin-bottom:8px; }
+  .u-mb-10 { margin-bottom:10px; }
+  .u-mb-12 { margin-bottom:12px; }
+  .u-mb-14 { margin-bottom:14px; }
+  .u-pt-16 { padding-top:16px; }
+
+  /* Component pattern utilities */
+  .u-screen-sub { padding-top:16px; }
+  .u-card-p20   { padding:20px; }
+  .u-card-p24   { padding:24px; }
+  .u-content-editable { font-size:13px; line-height:1.6; outline:none; min-height:40px; }
+
+  /* Tag color variants */
+  .u-tag-blue   { background:rgba(52,152,219,.15); color:var(--blue); }
+  .u-tag-green  { background:rgba(46,204,113,.15); color:var(--accent); }
+  .u-tag-gold   { background:rgba(241,196,15,.15); color:var(--gold); }
+  .u-tag-coral  { background:rgba(231,76,60,.15); color:var(--coral); }
+  .u-tag-accent-solid { background:var(--accent); color:white; }
+  .u-tag-gold-solid   { background:var(--gold); color:white; }
+  .u-tag-coral-solid  { background:var(--coral); color:white; }
+
+  /* ── Phase 4: Accessibility ── */
+  .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+  .skip-link { position:absolute; top:-40px; left:0; background:var(--accent); color:white; padding:8px 16px; z-index:9999; font-weight:700; transition:top .2s; }
+  .skip-link:focus { top:0; }
+</style>
+</head>
+<body>
+
+<!-- Control Bar -->
+<a href="#phone-screen" class="skip-link">메인 콘텐츠로 건너뛰기</a>
+<div class="control-bar" role="toolbar" aria-label="프로토타입 컨트롤">
+  <span class="logo">HelloNext</span>
+  <div class="role-toggle">
+    <button id="btn-member" class="active" onclick="switchRole('member')">회원</button>
+    <button id="btn-pro" onclick="switchRole('pro')">프로</button>
+  </div>
+  <span class="screen-label" id="screen-label">홈</span>
+  <span class="offline-badge" id="offline-badge">⚡ 오프라인 모드</span>
+  <button class="flow-btn" onclick="toggleOffline()" style="font-size:11px;padding:4px 10px">📶</button>
+  <button class="flow-btn" onclick="navTo('onboarding-login')" style="font-size:11px;padding:4px 10px">온보딩</button>
+  <button class="flow-btn" onclick="toggleFlow()">플로우</button>
+</div>
+
+<!-- Phone Frame -->
+<div class="phone-container">
+  <div class="phone-frame">
+    <div class="phone-notch"></div>
+    <div class="phone-screen" id="phone-screen" role="main" aria-live="polite"></div>
+
+    <!-- Tab Bar: Member -->
+    <div class="tab-bar" id="tabs-member" role="navigation" aria-label="회원 내비게이션">
+      <div class="tab-item active" onclick="navTo('member-home')" data-tab="member-home">
+        <svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+        <span>홈</span>
+      </div>
+      <div class="tab-item" onclick="navTo('member-practice')" data-tab="member-practice">
+        <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+        <span>연습</span>
+      </div>
+      <div class="tab-item" onclick="navTo('member-progress')" data-tab="member-progress">
+        <svg viewBox="0 0 24 24"><path d="M3.5 18.49l6-6.01 4 4L22 6.92l-1.41-1.41-7.09 7.97-4-4L2 16.99z"/></svg>
+        <span>진도</span>
+      </div>
+      <div class="tab-item" onclick="navTo('member-profile')" data-tab="member-profile">
+        <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+        <span>내 정보</span>
+      </div>
+    </div>
+
+    <!-- Tab Bar: Pro -->
+    <div class="tab-bar" id="tabs-pro" role="navigation" aria-label="프로 내비게이션" style="display:none">
+      <div class="tab-item active" onclick="navTo('pro-dashboard')" data-tab="pro-dashboard">
+        <svg viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
+        <span>대시보드</span>
+      </div>
+      <div class="tab-item" onclick="navTo('pro-members')" data-tab="pro-members">
+        <svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+        <span>회원</span>
+      </div>
+      <div class="tab-item" onclick="navTo('pro-reports')" data-tab="pro-reports">
+        <svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"/></svg>
+        <span>리포트</span>
+      </div>
+      <div class="tab-item" onclick="navTo('pro-settings')" data-tab="pro-settings">
+        <svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 00.12-.61l-1.92-3.32a.49.49 0 00-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 00-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58a.49.49 0 00-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6A3.6 3.6 0 1115.6 12 3.6 3.6 0 0112 15.6z"/></svg>
+        <span>설정</span>
+      </div>
+    </div>
+
+    <!-- Voice FAB (Pro only) -->
+    <div class="wf-fab" id="voice-fab" style="display:none" onclick="navTo('pro-voice-record')">
+      <svg viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.91-3c-.49 0-.9.36-.98.85C16.52 14.2 14.47 16 12 16s-4.52-1.8-4.93-4.15a.998.998 0 00-.98-.85c-.61 0-1.09.54-1 1.14.49 3 2.89 5.35 5.91 5.78V20c0 .55.45 1 1 1s1-.45 1-1v-2.08a6.993 6.993 0 005.91-5.78c.1-.6-.39-1.14-1-1.14z"/></svg>
+    </div>
+  </div>
+</div>
+
+<!-- Flow Diagram Overlay -->
+<div class="flow-overlay" id="flow-overlay" role="dialog" aria-label="화면 플로우 다이어그램">
+  <button class="flow-close" onclick="toggleFlow()">✕</button>
+  <div class="flow-content">
+
+    <h2>회원(Member) 화면 플로우</h2>
+    <div class="flow-grid">
+      <div class="flow-node" onclick="switchRole('member');navTo('member-home');toggleFlow()">
+        <div class="fn-role" style="color:var(--accent)">MEMBER</div>
+        <div class="fn-name">홈</div>
+        <div class="fn-desc">다가오는 레슨 일정, 최근 리포트, 프로 연결 상태, 빠른 액션 버튼</div>
+        <div class="fn-elements">
+          <span class="wf-tag tier-high">예약현황</span>
+          <span class="wf-tag tier-mid">최근리포트</span>
+        </div>
+      </div>
+      <div class="flow-node" onclick="switchRole('member');navTo('member-practice');toggleFlow()">
+        <div class="fn-role" style="color:var(--accent)">MEMBER</div>
+        <div class="fn-name">연습</div>
+        <div class="fn-desc">스윙 촬영, AI 분석 결과, 연습 드릴 리스트, 자가 체크리스트</div>
+        <div class="fn-elements">
+          <span class="wf-tag tier-high">스윙촬영</span>
+          <span class="wf-tag tier-mid">AI분석</span>
+        </div>
+      </div>
+      <div class="flow-node" onclick="switchRole('member');navTo('member-progress');toggleFlow()">
+        <div class="fn-role" style="color:var(--accent)">MEMBER</div>
+        <div class="fn-name">진도</div>
+        <div class="fn-desc">주간/월간 진도율, 인과 그래프, 측정 신뢰도, 변화 추이 차트</div>
+        <div class="fn-elements">
+          <span class="wf-tag tier-high">인과그래프</span>
+          <span class="wf-tag tier-low">신뢰도</span>
+        </div>
+      </div>
+      <div class="flow-node" onclick="switchRole('member');navTo('member-profile');toggleFlow()">
+        <div class="fn-role" style="color:var(--accent)">MEMBER</div>
+        <div class="fn-name">내 정보</div>
+        <div class="fn-desc">프로필, 구독 관리, 결제 내역, 알림 설정, 연결된 프로</div>
+        <div class="fn-elements">
+          <span class="wf-tag tier-mid">구독관리</span>
+          <span class="wf-tag tier-mid">설정</span>
+        </div>
+      </div>
+    </div>
+
+    <div style="text-align:center;color:var(--muted);margin:-24px 0 24px;font-size:13px">
+      홈 → 연습(스윙촬영) → 진도(분석결과) → 홈(리포트알림) — 순환 플로우
+    </div>
+
+    <h2>프로(Pro) 화면 플로우</h2>
+    <div class="flow-grid">
+      <div class="flow-node" onclick="switchRole('pro');navTo('pro-dashboard');toggleFlow()">
+        <div class="fn-role" style="color:var(--gold)">PRO</div>
+        <div class="fn-name">대시보드</div>
+        <div class="fn-desc">오늘 일정, 회원 현황, 매출 요약, 최근 음성메모, 미완료 리포트</div>
+        <div class="fn-elements">
+          <span class="wf-tag tier-high">일정</span>
+          <span class="wf-tag tier-mid">매출</span>
+          <span class="wf-tag tier-mid">음성메모</span>
+        </div>
+      </div>
+      <div class="flow-node" onclick="switchRole('pro');navTo('pro-members');toggleFlow()">
+        <div class="fn-role" style="color:var(--gold)">PRO</div>
+        <div class="fn-name">회원 관리</div>
+        <div class="fn-desc">회원 목록, 검색/필터, 회원 상세(진도+리포트 이력), 회원 추가</div>
+        <div class="fn-elements">
+          <span class="wf-tag tier-high">회원목록</span>
+          <span class="wf-tag tier-mid">상세보기</span>
+        </div>
+      </div>
+      <div class="flow-node" onclick="switchRole('pro');navTo('pro-reports');toggleFlow()">
+        <div class="fn-role" style="color:var(--gold)">PRO</div>
+        <div class="fn-name">리포트</div>
+        <div class="fn-desc">전송 대기/완료 리포트, 음성 전사 결과, AI 생성 리포트 편집</div>
+        <div class="fn-elements">
+          <span class="wf-tag tier-high">리포트목록</span>
+          <span class="wf-tag tier-low">음성전사</span>
+        </div>
+      </div>
+      <div class="flow-node" onclick="switchRole('pro');navTo('pro-settings');toggleFlow()">
+        <div class="fn-role" style="color:var(--gold)">PRO</div>
+        <div class="fn-name">설정</div>
+        <div class="fn-desc">프로필, 레슨 시간/요금, 결제 정산, 알림, 구독 플랜</div>
+        <div class="fn-elements">
+          <span class="wf-tag tier-mid">요금설정</span>
+          <span class="wf-tag tier-mid">정산</span>
+        </div>
+      </div>
+    </div>
+
+    <div style="text-align:center;color:var(--muted);margin:-24px 0 24px;font-size:13px">
+      대시보드 → 회원(상세) → 리포트(생성/편집) → 회원(전달) — 코칭 루프
+    </div>
+
+    <h2>공통 플로우</h2>
+    <div class="flow-grid" style="grid-template-columns: repeat(3, 1fr);">
+      <div class="flow-node">
+        <div class="fn-role" style="color:var(--blue)">AUTH</div>
+        <div class="fn-name">로그인 / 온보딩</div>
+        <div class="fn-desc">카카오 로그인 → 역할 선택(프로/회원) → 프로필 입력 → 홈</div>
+      </div>
+      <div class="flow-node">
+        <div class="fn-role" style="color:var(--blue)">SHARED</div>
+        <div class="fn-name">결제</div>
+        <div class="fn-desc">레슨 예약 → Toss Payments → 결제 완료 → 예약 확인</div>
+      </div>
+      <div class="flow-node">
+        <div class="fn-role" style="color:var(--blue)">SHARED</div>
+        <div class="fn-name">푸시 알림</div>
+        <div class="fn-desc">리포트 도착 / 레슨 리마인더 / 결제 알림 → 딥링크로 해당 화면</div>
+      </div>
+    </div>
+
+    <h2 style="margin-top:32px">핵심 UX 피드백 포인트</h2>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="wf-card wf-card-accent">
+        <div class="wf-card-title">1. 음성 메모 → 리포트 전환 UX</div>
+        <div class="wf-card-sub">프로가 FAB 버튼을 눌러 음성 녹음 → 자동 전사 → 리포트 초안 생성까지의 흐름이 직관적인가?</div>
+      </div>
+      <div class="wf-card wf-card-gold">
+        <div class="wf-card-title">2. 인과 그래프 시각화 이해도</div>
+        <div class="wf-card-sub">회원이 스윙 요소 간 인과관계 그래프를 쉽게 이해할 수 있는가? 라벨/컬러 직관성은?</div>
+      </div>
+      <div class="wf-card wf-card-blue">
+        <div class="wf-card-title">3. 신뢰도 3-Tier 표시 방식</div>
+        <div class="wf-card-sub">T1(High)/T2(Mid)/T3(Low) 측정 신뢰도를 사용자에게 어떻게 보여줄 것인가?</div>
+      </div>
+      <div class="wf-card wf-card-coral">
+        <div class="wf-card-title">4. 오프라인 → 온라인 전환 UX</div>
+        <div class="wf-card-sub">오프라인에서 작성한 데이터가 온라인 복귀 시 자연스럽게 동기화되는가? 충돌 처리는?</div>
+      </div>
+      <div class="wf-card wf-card-accent">
+        <div class="wf-card-title">5. 프로-회원 연결 온보딩</div>
+        <div class="wf-card-sub">프로가 회원을 초대하는 플로우, 회원이 프로를 검색/연결하는 플로우의 마찰 최소화</div>
+      </div>
+      <div class="wf-card wf-card-gold">
+        <div class="wf-card-title">6. 리포트 가독성</div>
+        <div class="wf-card-sub">AI 생성 리포트의 구조/레이아웃이 회원에게 유용한 정보를 전달하는가?</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Phase 1: DATA MODEL + CONSTANTS (C-03 / M-05 해결)
+// 모든 하드코딩 데이터 → 구조화된 DATA 객체
+// 모든 매직 넘버 → 명명된 CONST 상수
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+const CONST = {
+  // SVG Ring Chart 매직 넘버
+  RING_LG_CIRC: 440,           // 2π × 70 (large ring circumference)
+  RING_LG_OFFSET: 110,         // 25% of 440 (12시 시작점)
+  RING_LG_MULT: 4.4,           // 440 / 100
+  RING_SM_CIRC: 188.5,         // 2π × 30 (small ring circumference)
+  RING_SM_OFFSET: 47.1,        // 25% of 188.5
+
+  // Celebration
+  CONFETTI_COUNT: 24,
+  CONFETTI_COLORS: ['#059669','#D97706','#2563EB','#DC2626','#EA580C','#8B5CF6','#EC4899'],
+  CELEBRATION_TIMEOUT: 5000,
+
+  // AI
+  AI_JOINT_POINTS: 33,
+  TIER_UP_MIN_DATA: 5,
+
+  // Tiers
+  TIER: {
+    HIGH: { label: 'T1 — High', tag: 'T1 High', css: 'tier-high' },
+    MID:  { label: 'T2 — Mid',  tag: 'T2 Mid',  css: 'tier-mid' },
+    LOW:  { label: 'T3 — Low',  tag: 'T3 Low',  css: 'tier-low' }
+  },
+
+  // Fees
+  FEE_PLATFORM: 8,
+  FEE_PG: 2,
+  FEE_TOTAL: 10,
+};
+
+const DATA = {
+  // ─── 회원 프로필 ───
+  members: {
+    minsu: {
+      name: '민수', initial: '민', color: 'var(--accent)',
+      handicap: 18, lessonCount: 24, regDate: '2025.12', recentDate: '3/9',
+      growthRate: '↑15%', growthTier: CONST.TIER.HIGH,
+      scores: { current: 82, change: '+15', start: 67, target: 80, progress: 78 },
+      swing: {
+        latest: 74, latestChange: '+3', best: 82, todayAvg: 72,
+        tier: CONST.TIER.MID, feelAccuracy: 68, distanceLoss: 15,
+        segments: { address: 'A+', backswing: 'B+', impact: 'C', followThrough: 'A' },
+        tempoRatio: '3.2:1'
+      },
+      measurements: {
+        grip:   { value: 7.2, recommended: 4.0, tier: CONST.TIER.HIGH, progress: 92, label: '그립 압력' },
+        weight: { delay: 0.3, tier: CONST.TIER.MID, progress: 65, plateauWeeks: 3, range: '72~74점', label: '체중 이동' },
+        hip:    { tier: CONST.TIER.LOW, progress: 35, label: '힙 회전' },
+      },
+      streak: { current: 5, max: 12, week: [1,1,1,1,1,0,0] },
+      goals: {
+        swing: { cur: 2, max: 5, color: 'var(--accent)', label: '스윙 촬영' },
+        drill: { cur: 1, max: 3, color: 'var(--blue)',   label: '드릴 완료' },
+        feel:  { cur: 3, max: 5, color: 'var(--gold)',   label: 'Feel Check' },
+      },
+      badges: {
+        earned: [
+          { icon: '🏌', name: '첫 스윙',     color: 'var(--accent)', bg: 'rgba(5,150,105,.12)' },
+          { icon: '🤲', name: '그립 마스터', color: 'var(--gold)',   bg: 'rgba(217,119,6,.12)' },
+          { icon: '🔥', name: '5일 연속',    color: 'var(--orange)', bg: 'rgba(234,88,12,.12)' },
+        ],
+        locked: [
+          { icon: '🎯', name: 'Feel 80%' },
+          { icon: '💯', name: '100회' },
+          { icon: '⭐', name: '프로 만점' },
+        ],
+        earnedCount: 3, totalCount: 8
+      },
+      sub: { plan: '프리미엄 회원', price: 9900, nextPay: '3/28', active: true },
+    },
+    jiyoung: { name: '지영', initial: '지', color: 'var(--gold)', handicap: 24, lessonCount: 12, recentDate: '3/8', growthRate: '↑8%', growthTier: CONST.TIER.MID },
+    hyunwoo: { name: '현우', initial: '현', color: 'var(--blue)', handicap: 30, lessonCount: 6, recentDate: '3/5', growthRate: '→0%', growthTier: CONST.TIER.LOW },
+    seoyeon: { name: '서연', initial: '서', color: 'var(--orange)', handicap: 22, lessonCount: 18, recentDate: '3/7', growthRate: '↑20%', growthTier: CONST.TIER.HIGH },
+    taeho:   { name: '태호', initial: '태', color: 'var(--coral)', handicap: 28, lessonCount: 3, recentDate: '2/28', growthRate: null, inactive: true },
+  },
+
+  // ─── 프로 프로필 ───
+  pro: {
+    name: '김프로', title: '김프로 코치', initial: '김', color: 'var(--gold)',
+    org: 'KPGA 정회원', exp: '경력 8년', rating: 4.9,
+    sub: { plan: 'Pro 플랜', price: 49000, nextPay: '4/1', maxMembers: 50 },
+    totalMembers: 32, activeMembers: 28,
+    inviteUrl: '${DATA.pro.inviteUrl}',
+    bank: { name: '신한은행', masked: '110-***-***456' },
+    coaching: { impRate: 78, avgChange: '+12', satisfaction: 4.8, impDelta: '+8%p', satDelta: '+0.3' },
+  },
+
+  // ─── 드릴 ───
+  drills: {
+    grip: { name: '그립 압력 감지 드릴', type: '프로 추천', sets: 3, reps: 10, mins: 15, done: 4, total: 10, pct: 40 },
+    weight: { name: '체중 이동 연습', type: 'AI 추천', detail: '밸런스 보드 활용', sets: 2, reps: 8, done: 0, total: 8, pct: 0 },
+  },
+
+  // ─── 레슨 ───
+  lesson: {
+    date: '3월 13일 (목)', time: '14:00 ~ 15:00', dDay: 'D-2',
+    location: '실내 연습장 A 타석', focus: '드라이버 교정',
+  },
+
+  // ─── 결제/정산 ───
+  settlement: {
+    gross: 2400000, fee: 240000, net: 2160000,
+    lessons: 18, packages: 5,
+    months: [
+      { label: '3월 (진행 중)', date: '4/5', amount: 2160000 },
+      { label: '2월', date: '정산 완료 · 3/5', amount: 1890000 },
+      { label: '1월', date: '정산 완료 · 2/5', amount: 1620000 },
+    ]
+  },
+
+  // ─── 매출 ───
+  revenue: { appPayment: '₩3.2M', convRate: '65%' },
+
+  // ─── Celebration 메시지 ───
+  celebrations: {
+    'high-score': { icon: '🏆', bg: 'rgba(217,119,6,.15)', title: '새로운 최고 기록!', sub: '78점 — 이전 기록 76점을 갱신했어요!' },
+    'first-drill': { icon: '✅', bg: 'rgba(5,150,105,.15)', title: '첫 드릴 완료!', sub: '꾸준한 연습이 실력을 만듭니다' },
+    'feel-80':     { icon: '🎯', bg: 'rgba(37,99,235,.15)', title: 'Feel 정확도 80% 돌파!', sub: '몸의 감각과 실제 스윙이 일치하고 있어요' },
+    'tier-up':     { icon: '⭐', bg: 'rgba(139,92,246,.15)', title: '등급 승급! T2 → T1', sub: '상위 10% 스윙어 대열에 합류했어요' },
+    'streak-7':    { icon: '🔥', bg: 'rgba(234,88,12,.15)', title: '7일 연속 연습!', sub: '놀라운 꾸준함이에요. 계속 가보자!' },
+  },
+
+  // ─── AI 피드백 설정 ───
+  aiFeedback: [
+    { label: '체중이동', desc: '뒤꿈치→앞발 전환 타이밍', on: true },
+    { label: '그립 압력', desc: '임팩트 시 압력 수치', on: true },
+    { label: '캐스팅 각도', desc: '다운스윙 초기 손목 릴리즈', on: false },
+    { label: '오버스윙', desc: '백스윙 톱 과도 회전', on: false },
+    { label: '임팩트 위치', desc: '클럽 페이스 중심 정확도', on: true },
+  ],
+  aiTone: [
+    { label: '관찰만', desc: '수치 데이터만 표시, 조언 없음', selected: false },
+    { label: '부드러운 제안', desc: '"체중이동이 약간 늦는 것 같아요" 식 권유', selected: true },
+    { label: '구체적 가이드', desc: '"체중을 앞발로 0.2초 빠르게 옮기세요" 식 지시', selected: false },
+  ],
+};
+
+// ── Helper Functions ──
+function M(id) { return DATA.members[id]; }
+function ringDA(pct, circ) {
+  circ = circ || CONST.RING_LG_CIRC;
+  var m = circ / 100;
+  return (pct * m) + ' ' + ((100 - pct) * m);
+}
+function fmtWon(n) { return '₩' + n.toLocaleString(); }
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Phase 2: REUSABLE COMPONENTS (C-01 God Object / M-01 해결)
+// 반복 UI 패턴 → 재사용 가능 함수
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+/** SVG Ring Chart component */
+function Ring(val, pct, color, circ) {
+  circ = circ || CONST.RING_LG_CIRC;
+  var r = circ / (2 * Math.PI);
+  var sz = Math.round(r * 2 + 20);
+  var cx = Math.round(sz / 2);
+  var sw = circ > 300 ? 10 : 6;
+  var fs = circ > 300 ? 48 : 16;
+  var offset = circ * 0.25;
+  return '<svg width="' + sz + '" height="' + sz + '" viewBox="0 0 ' + sz + ' ' + sz + '">' +
+    '<circle cx="' + cx + '" cy="' + cx + '" r="' + r + '" fill="none" stroke="var(--card2)" stroke-width="' + sw + '"/>' +
+    '<circle cx="' + cx + '" cy="' + cx + '" r="' + r + '" fill="none" stroke="' + color + '" stroke-width="' + sw + '" stroke-linecap="round" ' +
+    'stroke-dasharray="' + ringDA(pct, circ) + '" stroke-dashoffset="' + offset + '" style="transition:stroke-dasharray .8s ease-out"/>' +
+    '<text x="' + cx + '" y="' + (cx + Math.round(fs * 0.15)) + '" text-anchor="middle" font-size="' + fs + '" font-weight="800" fill="' + color + '">' + val + '</text>' +
+    '</svg>';
+}
+
+/** Stat Card component */
+function StatCard(val, label, color, extraStyle) {
+  var vs = color ? ' style="color:' + color + (extraStyle ? ';' + extraStyle : '') + '"' : (extraStyle ? ' style="' + extraStyle + '"' : '');
+  return '<div class="wf-stat"><div class="val"' + vs + '>' + val + '</div><div class="label">' + label + '</div></div>';
+}
+
+/** Section heading component */
+function Sec(title, rightHtml, extra) {
+  if (extra) return '<div class="wf-section" ' + extra + '>' + title + (rightHtml ? rightHtml : '') + '</div>';
+  return '<div class="wf-section">' + title + (rightHtml ? rightHtml : '') + '</div>';
+}
+
+/** Tag/Chip component */
+function Tag(text, cls, extra) {
+  if (extra) return '<span class="wf-tag' + (cls ? ' ' + cls : '') + '" ' + extra + '>' + text + '</span>';
+  return '<span class="wf-tag' + (cls ? ' ' + cls : '') + '">' + text + '</span>';
+}
+
+/** Progress Bar component */
+function PBar(pct, color) {
+  color = color || 'var(--accent)';
+  return '<div class="wf-progress-bar"><div class="wf-progress-fill" style="width:' + pct + '%;background:' + color + '"></div></div>';
+}
+
+/** Avatar component */
+function Ava(initial, color, size) {
+  size = size || 44;
+  return '<div class="wf-avatar" style="' + (size !== 44 ? 'width:' + size + 'px;height:' + size + 'px;' : '') +
+    'background:' + color + ';color:white' + (size > 60 ? ';font-size:' + Math.round(size * 0.39) + 'px' : '') +
+    (size > 60 ? ';margin:0 auto' : '') + '">' + initial + '</div>';
+}
+
+/** List Item component */
+function ListRow(avatarHtml, name, meta, rightHtml, onClick) {
+  var oc = onClick ? ' onclick="' + onClick + '"' : '';
+  return '<div class="wf-list-item"' + oc + '>' +
+    (avatarHtml || '') +
+    '<div class="wf-list-info"><div class="name">' + name + '</div>' +
+    (meta ? '<div class="meta">' + meta + '</div>' : '') + '</div>' +
+    (rightHtml || '') + '</div>';
+}
+
+/** Menu Item (simplified list item with arrow) */
+function MenuItem(name, meta, onClick) {
+  var oc = onClick ? ' onclick="' + onClick + '"' : '';
+  return '<div class="wf-list-item"' + oc + '>' +
+    '<div class="wf-list-info"><div class="name">' + name + '</div>' +
+    (meta ? '<div class="meta">' + meta + '</div>' : '') + '</div>' +
+    '<span style="color:var(--muted)">→</span></div>';
+}
+
+/** Badge (earned or locked) */
+function BadgeIcon(icon, name, color, bg, locked) {
+  if (locked) {
+    return '<div style="text-align:center;width:68px;opacity:.35">' +
+      '<div style="width:56px;height:56px;border-radius:50%;background:var(--light);display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto;border:2px solid var(--border)">' + icon + '</div>' +
+      '<div style="font-size:10px;font-weight:600;margin-top:4px;color:var(--muted)">' + name + '</div></div>';
+  }
+  return '<div style="text-align:center;width:68px">' +
+    '<div style="width:56px;height:56px;border-radius:50%;background:' + bg + ';display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto;border:2px solid ' + color + '">' + icon + '</div>' +
+    '<div style="font-size:10px;font-weight:600;margin-top:4px;color:var(--text-main)">' + name + '</div></div>';
+}
+
+/** Toggle Switch */
+function ToggleSw(on) {
+  if (on) return '<div style="width:40px;height:22px;background:var(--accent);border-radius:11px;position:relative;cursor:pointer"><div style="width:18px;height:18px;background:white;border-radius:50%;position:absolute;right:2px;top:2px"></div></div>';
+  return '<div style="width:40px;height:22px;background:var(--muted);border-radius:11px;position:relative;cursor:pointer"><div style="width:18px;height:18px;background:white;border-radius:50%;position:absolute;left:2px;top:2px"></div></div>';
+}
+
+/** Status Badge */
+function StatusBadge(text, type) {
+  var styles = {
+    active: 'background:rgba(46,204,113,.15);color:var(--accent)',
+    inactive: 'background:rgba(231,76,60,.15);color:var(--coral)',
+    pending: 'background:rgba(241,196,15,.15);color:var(--gold)',
+  };
+  return '<div class="wf-badge" style="' + (styles[type] || styles.active) + '">' + text + '</div>';
+}
+
+/** Streak bar visualization */
+function StreakBar(week) {
+  var bars = '';
+  for (var i = 0; i < week.length; i++) {
+    bars += '<div style="width:8px;height:24px;border-radius:4px;background:' + (week[i] ? 'var(--orange)' : 'var(--light)') + '"></div>';
+  }
+  return '<div style="display:flex;gap:3px">' + bars + '</div>';
+}
+
+
+
+// ── State (M-03: 캡슐화된 상태 객체) ──
+const AppState = {
+  currentRole: 'member',
+  currentScreen: 'member-home',
+  navHistory: [],
+  isOffline: false,
+};
+// Backward-compatible accessors (기존 코드 호환성)
+Object.defineProperty(window, 'currentRole', {
+  get() { return AppState.currentRole; },
+  set(v) { AppState.currentRole = v; }
+});
+Object.defineProperty(window, 'currentScreen', {
+  get() { return AppState.currentScreen; },
+  set(v) { AppState.currentScreen = v; }
+});
+Object.defineProperty(window, 'navHistory', {
+  get() { return AppState.navHistory; },
+  set(v) { AppState.navHistory = v; }
+});
+Object.defineProperty(window, 'isOffline', {
+  get() { return AppState.isOffline; },
+  set(v) { AppState.isOffline = v; }
+});
+
+// ── Sub-screen header helper ──
+function subHeader(title, actionHtml) {
+  return `<div class="sub-header">
+    <button class="back-btn" onclick="goBack()">←</button>
+    <h2>${title}</h2>
+    ${actionHtml||''}
+  </div>`;
+}
+
+
+// ── Phase 3: Named Event Handlers (C-04 해결) ──
+function feelSelect(choice) {
+  var map = {
+    good: { text: '💪 됐다', match: '일치 ✅', color: 'var(--accent)' },
+    unsure: { text: '🤔 모르겠다', match: '불확실 ⚠️', color: 'var(--gold)' },
+    bad: { text: '😣 안됐다', match: '불일치 ❌', color: 'var(--coral)' },
+  };
+  var d = map[choice] || map.good;
+  document.getElementById('feel-step-ask').style.display = 'none';
+  document.getElementById('feel-step-result').style.display = 'block';
+  document.getElementById('feel-choice').textContent = d.text;
+  document.getElementById('feel-match').textContent = d.match;
+  document.getElementById('feel-match').style.color = d.color;
+}
+
+function feelReset() {
+  document.getElementById('feel-step-ask').style.display = 'block';
+  document.getElementById('feel-step-result').style.display = 'none';
+}
+
+
+// ── Phase 4: SVG Icon Helpers (N-01 부분 해결) ──
+var ICON = {
+  play: function(size, color) {
+    size = size || 24; color = color || 'var(--muted)';
+    return '<svg width="'+size+'" height="'+size+'" fill="'+color+'" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
+  },
+  arrow: function(size, color) {
+    size = size || 24; color = color || 'white';
+    return '<svg width="'+size+'" height="'+size+'" fill="'+color+'" viewBox="0 0 24 24"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/></svg>';
+  },
+  mic: function(size, color) {
+    size = size || 18; color = color || 'var(--gold)';
+    return '<svg width="'+size+'" height="'+size+'" fill="'+color+'" viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/></svg>';
+  },
+  camera: function(size, color) {
+    size = size || 24; color = color || 'white';
+    return '<svg width="'+size+'" height="'+size+'" fill="'+color+'" viewBox="0 0 24 24"><path d="M12 15.2l3.2-2.4V8.4L12 6 8.8 8.4v4.4L12 15.2z"/><circle cx="12" cy="10" r="3.2"/></svg>';
+  },
+};
+
+// ── Screen Templates ──
+const screens = {
+  // ━━━━ MEMBER SCREENS ━━━━
+  'member-home': {
+    label: '홈',
+    render: () => `
+      <div class="screen-header">
+        <h1>안녕하세요, ${M("minsu").name}님 👋</h1>
+        <p style="color:#FDE68A;font-weight:700">레슨 2시간 전입니다! 체크인 준비하세요.</p>
+      </div>
+      <div class="screen-content">
+        <!-- 개선안 3: Streak Counter (Duolingo 패턴) -->
+        <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;background:linear-gradient(135deg,rgba(234,88,12,.06),rgba(234,88,12,.12));border-radius:var(--radius);margin-bottom:14px;border:1px solid rgba(234,88,12,.15)">
+          <div style="font-size:36px">🔥</div>
+          <div style="flex:1">
+            <div style="font-size:20px;font-weight:900;color:var(--orange)">${M("minsu").streak.current}일 연속</div>
+            <div style="font-size:12px;color:var(--muted)">연습 스트릭 · 최장 ${M("minsu").streak.max}일</div>
+          </div>
+          <div style="text-align:center">
+            ${StreakBar(M("minsu").streak.week)}
+            <div style="font-size:9px;color:var(--muted);margin-top:4px">이번 주</div>
+          </div>
+        </div>
+
+        <div class="wf-card bg-premium" onclick="navTo('member-lesson-detail')">
+          <div class="u-flex-between">
+            <div>
+              <div class="wf-card-title" style="color:white">오늘의 레슨: ${DATA.pro.title}</div>
+              <div class="wf-card-sub" style="color:#D1FAE5">14:00 — 실내 연습장 A 타석</div>
+            </div>
+            <svg width="24" height="24" fill="white" viewBox="0 0 24 24"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/></svg>
+          </div>
+        </div>
+
+        <div class="wf-section">이번 주 요약</div>
+        <div class="wf-stat-row">
+          <div class="wf-stat">
+            <div class="val">3회</div>
+            <div class="label">레슨 완료</div>
+          </div>
+          <div class="wf-stat">
+            <div class="val">12회</div>
+            <div class="label">자가 연습</div>
+          </div>
+          <div class="wf-stat">
+            <div class="val" style="color:var(--accent)">↑15%</div>
+            <div class="label">스윙 점수</div>
+          </div>
+        </div>
+
+        <!-- 개선안 7: Weekly Goal 위젯 -->
+        <div class="wf-card" style="border:1px solid rgba(5,150,105,.2);background:rgba(5,150,105,.03)">
+          <div class="u-flex-between" style="margin-bottom:10px">
+            <div style="font-size:14px;font-weight:800;color:var(--text-main)">이번 주 목표</div>
+            <span style="font-size:11px;color:var(--accent);font-weight:600">프로 설정</span>
+          </div>
+          <div style="display:flex;gap:10px">
+            <div style="flex:1;text-align:center;padding:10px;background:var(--card);border-radius:8px;border:1px solid var(--border)">
+              <div style="font-size:11px;color:var(--muted);margin-bottom:4px">스윙 촬영</div>
+              <div style="font-size:20px;font-weight:800;color:var(--accent)">2<span style="font-size:12px;color:var(--muted)">/5</span></div>
+              <div class="wf-progress-bar" style="margin:4px 0 0"><div class="wf-progress-fill" style="width:40%;background:var(--accent)"></div></div>
+            </div>
+            <div style="flex:1;text-align:center;padding:10px;background:var(--card);border-radius:8px;border:1px solid var(--border)">
+              <div style="font-size:11px;color:var(--muted);margin-bottom:4px">드릴 완료</div>
+              <div style="font-size:20px;font-weight:800;color:var(--blue)">1<span style="font-size:12px;color:var(--muted)">/3</span></div>
+              <div class="wf-progress-bar" style="margin:4px 0 0"><div class="wf-progress-fill" style="width:33%;background:var(--blue)"></div></div>
+            </div>
+            <div style="flex:1;text-align:center;padding:10px;background:var(--card);border-radius:8px;border:1px solid var(--border)">
+              <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Feel Check</div>
+              <div style="font-size:20px;font-weight:800;color:var(--gold)">3<span style="font-size:12px;color:var(--muted)">/5</span></div>
+              <div class="wf-progress-bar" style="margin:4px 0 0"><div class="wf-progress-fill" style="width:60%;background:var(--gold)"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 개선안 4: accent divider -->
+        <div class="wf-card-divider"></div>
+        <div class="wf-section">프로의 최근 피드백</div>
+        <div class="wf-card border-left-gold" onclick="navTo('member-report-detail')">
+          <div class="wf-card-title">3/9 드라이버 어드레스 교정</div>
+          <div class="wf-card-sub">"그립 압력을 낮추니 헤드 스피드가 늘었습니다. 다음엔 체중 이동을 잡아볼게요."</div>
+          <div class="u-mt-8">
+            <span class="wf-tag tier-high">T1 High</span>
+            <span class="wf-tag" style="background:rgba(37,99,235,.1);color:var(--blue)">AI 분석 첨부됨</span>
+          </div>
+        </div>
+        <div class="wf-card" onclick="navTo('member-progress')">
+          <div class="wf-card-title">3/7 레슨 리포트</div>
+          <div class="wf-card-sub">아이언 임팩트 — 체중 이동 패턴 분석</div>
+          <div class="u-mt-8">
+            <span class="wf-tag tier-mid">T2 Mid</span>
+            <span class="wf-tag" class="u-tag-blue">인과분석</span>
+          </div>
+        </div>
+
+        <div class="wf-section">빠른 액션</div>
+        <button class="wf-btn wf-btn-primary" onclick="navTo('member-practice')">스윙 촬영하기</button>
+        <button class="wf-btn wf-btn-secondary" onclick="navTo('member-message')">프로에게 질문하기</button>
+      </div>
+    `
+  },
+
+  'member-practice': {
+    label: 'AI 스윙 분석',
+    render: () => `
+      <div class="screen-header">
+        <h1>분석 결과 요약</h1>
+        <p>방금 촬영한 7번 아이언 스윙</p>
+      </div>
+      <div class="screen-content">
+        <!-- 개선안 1: Emotional Score Card (P0) — SVG circular progress + 점수 변화 + 감성 문구 + 배경 그라디언트 -->
+        <div style="text-align:center;padding:24px 16px 28px;background:linear-gradient(180deg,rgba(5,150,105,.06) 0%,rgba(5,150,105,0) 100%);border-radius:var(--radius);margin-bottom:8px;position:relative">
+          <div style="position:relative;width:160px;height:160px;margin:0 auto 16px">
+            <svg viewBox="0 0 160 160" width="160" height="160">
+              <circle cx="80" cy="80" r="70" fill="none" stroke="var(--light)" stroke-width="10"/>
+              <circle cx="80" cy="80" r="70" fill="none" stroke="var(--accent)" stroke-width="10" stroke-linecap="round"
+                stroke-dasharray="${ringDA(74)}" stroke-dashoffset="${CONST.RING_LG_OFFSET}"
+                style="transition:stroke-dasharray .8s ease-out"/>
+            </svg>
+            <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center">
+              <div style="font-size:48px;font-weight:900;color:var(--text-main);line-height:1" id="score-num">${M("minsu").swing.latest}</div>
+              <div style="font-size:14px;color:var(--muted);font-weight:600">점</div>
+            </div>
+          </div>
+          <div style="display:inline-flex;align-items:center;gap:6px;background:rgba(5,150,105,.1);padding:6px 14px;border-radius:20px;margin-bottom:8px">
+            <span style="font-size:18px;color:var(--accent);font-weight:800">↑${M("minsu").swing.latestChange}</span>
+            <span style="font-size:13px;color:var(--accent);font-weight:600">지난주보다 올랐어요!</span>
+          </div>
+          <div style="font-size:16px;font-weight:700;color:var(--coral);margin-top:8px">⚠️ 비거리를 ${M("minsu").swing.distanceLoss}m 손해 보고 있습니다.</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:4px">(TTS: "어드레스 시 체중이 뒤에 있습니다. 74점입니다.")</div>
+          <div style="display:flex;justify-content:center;gap:16px;margin-top:12px;font-size:11px;color:var(--muted)">
+            <span>최고 기록 <b style="color:var(--text-main)">${M("minsu").swing.best}점</b></span>
+            <span>|</span>
+            <span>오늘 평균 <b style="color:var(--text-main)">${M("minsu").swing.todayAvg}점</b></span>
+            <span>|</span>
+            <span>등급 <b style="color:var(--gold)">T2 Mid</b></span>
+          </div>
+          <!-- 개선안 2: Celebration 데모 트리거 -->
+          <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-top:14px">
+            <span onclick="showCelebration('high-score')" style="font-size:10px;padding:4px 10px;border-radius:12px;background:rgba(217,119,6,.1);color:var(--gold);cursor:pointer;font-weight:600">🏆 최고기록</span>
+            <span onclick="showCelebration('feel-80')" style="font-size:10px;padding:4px 10px;border-radius:12px;background:rgba(37,99,235,.1);color:var(--blue);cursor:pointer;font-weight:600">🎯 Feel80%</span>
+            <span onclick="showCelebration('tier-up')" style="font-size:10px;padding:4px 10px;border-radius:12px;background:rgba(139,92,246,.1);color:#8B5CF6;cursor:pointer;font-weight:600">⭐ 승급</span>
+            <span onclick="showCelebration('streak-7')" style="font-size:10px;padding:4px 10px;border-radius:12px;background:rgba(234,88,12,.1);color:var(--orange);cursor:pointer;font-weight:600">🔥 7일연속</span>
+          </div>
+        </div>
+        <div class="wf-card" style="padding:0;overflow:hidden">
+          <div style="height:180px;background:var(--light);display:flex;align-items:center;justify-content:center">
+            <svg width="40" height="40" fill="var(--muted)" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+            <span style="margin-left:8px;font-weight:700;color:var(--muted)">3D 스켈레톤 영상 리플레이</span>
+          </div>
+        </div>
+        <div class="wf-section">근본 원인 탐색</div>
+        <div class="wf-card" style="background:#FFFBEB;border:1px solid #FDE68A" onclick="navTo('member-causal-graph')">
+          <div class="u-flex-between">
+            <div>
+              <div class="wf-card-title" style="color:var(--gold)">비거리 손실의 진짜 이유?</div>
+              <div class="wf-card-sub" style="color:#B45309">AI 인과 그래프로 ${CONST.AI_JOINT_POINTS}개 관절의 문제점 분석</div>
+            </div>
+            <div style="font-size:24px">🔒</div>
+          </div>
+          <button class="wf-btn wf-btn-premium" style="margin-top:16px;margin-bottom:0" onclick="event.stopPropagation()">프리미엄 분석 잠금 해제 (월 ${fmtWon(M("minsu").sub.price)})</button>
+        </div>
+        <button class="wf-btn wf-btn-primary" onclick="navTo('member-camera')" class="u-mt-12">연습 모드 켜기 (카메라 촬영)</button>
+
+        <!-- MUST-1: Feel Check 플로우 (v4 흡수) -->
+        <div class="wf-section">Feel Check</div>
+        <div id="feel-check-area">
+          <div class="wf-card" id="feel-step-ask" style="text-align:center;padding:24px 16px;border:2px solid var(--accent);background:rgba(5,150,105,.04)">
+            <div style="font-size:15px;font-weight:700;color:var(--text-main);margin-bottom:4px">이번 스윙, 어땠나요?</div>
+            <div style="font-size:12px;color:var(--muted);margin-bottom:16px">느낀 감각을 선택해주세요 (Feel vs Real 비교)</div>
+            <div style="display:flex;justify-content:center;gap:12px">
+              <div onclick="feelSelect('good')" style="flex:1;max-width:100px;padding:16px 8px;border-radius:12px;background:var(--card2);cursor:pointer;text-align:center;border:1px solid var(--border)">
+                <div style="font-size:28px">💪</div>
+                <div style="font-size:12px;font-weight:600;margin-top:4px;color:var(--accent)">됐다</div>
+              </div>
+              <div onclick="feelSelect('unsure')" style="flex:1;max-width:100px;padding:16px 8px;border-radius:12px;background:var(--card2);cursor:pointer;text-align:center;border:1px solid var(--border)">
+                <div style="font-size:28px">🤔</div>
+                <div style="font-size:12px;font-weight:600;margin-top:4px;color:var(--gold)">모르겠다</div>
+              </div>
+              <div onclick="feelSelect('bad')" style="flex:1;max-width:100px;padding:16px 8px;border-radius:12px;background:var(--card2);cursor:pointer;text-align:center;border:1px solid var(--border)">
+                <div style="font-size:28px">😣</div>
+                <div style="font-size:12px;font-weight:600;margin-top:4px;color:var(--coral)">안됐다</div>
+              </div>
+            </div>
+          </div>
+          <div id="feel-step-result" style="display:none">
+            <div class="wf-card" style="border:2px solid var(--accent);padding:20px">
+              <div class="u-flex-between" style="margin-bottom:12px">
+                <div style="font-size:14px;font-weight:700">Feel vs Real 매칭</div>
+                <div style="font-size:12px;color:var(--muted);cursor:pointer" onclick="feelReset()">다시 선택 ↩</div>
+              </div>
+              <div style="display:flex;gap:12px;margin-bottom:12px">
+                <div style="flex:1;text-align:center;padding:12px;background:var(--card2);border-radius:8px">
+                  <div style="font-size:11px;color:var(--muted);margin-bottom:4px">내 느낌</div>
+                  <div id="feel-choice" style="font-size:14px;font-weight:700">—</div>
+                </div>
+                <div style="flex:1;text-align:center;padding:12px;background:var(--card2);border-radius:8px">
+                  <div style="font-size:11px;color:var(--muted);margin-bottom:4px">AI 분석</div>
+                  <div style="font-size:14px;font-weight:700;color:var(--gold)">🤔 보통 (74점)</div>
+                </div>
+              </div>
+              <div style="text-align:center;padding:8px;background:rgba(5,150,105,.06);border-radius:8px">
+                <div style="font-size:13px;font-weight:700" id="feel-match">—</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;margin-top:12px;padding:10px;background:var(--card2);border-radius:8px">
+                <div class="u-txt-xs">Feel 정확도</div>
+                <div class="wf-progress-bar" style="flex:1"><div class="wf-progress-fill" style="width:${M("minsu").swing.feelAccuracy}%;background:var(--accent)"></div></div>
+                <div style="font-size:13px;font-weight:800;color:var(--accent)">${M("minsu").swing.feelAccuracy}%</div>
+              </div>
+            </div>
+            <button class="wf-btn wf-btn-primary" style="margin-top:10px" onclick="navTo('member-message')">프로에게 이 데이터 보내기</button>
+            <div style="font-size:11px;color:var(--muted);margin-top:6px;text-align:center">Feel 기록 + AI 분석 + 영상 링크가 함께 전송됩니다</div>
+            <div class="wf-card" style="margin-top:12px;padding:12px;background:rgba(5,150,105,.04);border:1px solid rgba(5,150,105,.15)">
+              <div style="font-size:12px;font-weight:600;color:var(--accent);margin-bottom:6px">🔒 AI 관찰 (프로가 허용한 항목만)</div>
+              <div style="font-size:12px;color:var(--text-main);line-height:1.6">
+                ✅ 체중이동: 뒤꿈치 → 앞발 전환 지연 ${M("minsu").measurements.weight.delay}s<br/>
+                ✅ 그립 압력: 임팩트 시 ${M("minsu").measurements.grip.value} → 권장 ${M("minsu").measurements.grip.recommended}<br/>
+                🔒 캐스팅: <span style="color:var(--muted);font-style:italic">프로 비공개 설정</span><br/>
+                🔒 오버스윙: <span style="color:var(--muted);font-style:italic">프로 비공개 설정</span>
+              </div>
+              <div style="font-size:10px;color:var(--muted);margin-top:8px">[DC-1: 3-Layer] 프로가 설정한 AI 공개 범위 적용됨</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="wf-section">최근 촬영</div>
+        <div class="wf-card" onclick="navTo('member-swing-result')">
+          <div style="display:flex;gap:12px;align-items:center">
+            <div style="width:60px;height:60px;background:var(--card2);border-radius:8px;display:flex;align-items:center;justify-content:center;position:relative">
+              <svg width="28" height="28" fill="var(--accent)" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+              ${isOffline ? '<div class="wifi-badge">☁️ Wi-Fi</div>' : ''}
+            </div>
+            <div>
+              <div class="wf-card-title">드라이버 풀스윙</div>
+              <div class="wf-card-sub">오늘 10:32 — ${isOffline ? '로컬 저장됨' : 'AI 분석 완료'}</div>
+              <span class="wf-tag tier-high" class="u-mt-4">점수 82</span>
+            </div>
+          </div>
+        </div>
+        <div class="wf-card">
+          <div style="display:flex;gap:12px;align-items:center">
+            <div style="width:60px;height:60px;background:var(--card2);border-radius:8px;display:flex;align-items:center;justify-content:center">
+              <svg width="28" height="28" fill="var(--gold)" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+            </div>
+            <div>
+              <div class="wf-card-title">7번 아이언 어프로치</div>
+              <div class="wf-card-sub">어제 16:15 — AI 분석 완료</div>
+              <span class="wf-tag tier-mid" class="u-mt-4">점수 74</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="wf-section">추천 연습 드릴</div>
+        <div class="wf-card wf-card-accent" onclick="navTo('member-drill-detail')">
+          <div class="wf-card-title">그립 압력 감지 드릴</div>
+          <div class="wf-card-sub">${DATA.drills.grip.type} — ${DATA.drills.grip.sets}세트 × ${DATA.drills.grip.reps}회 반복</div>
+          <div class="wf-progress-bar"><div class="wf-progress-fill" style="width:40%;background:var(--accent)"></div></div>
+          <div class="u-txt-xxs">4/10 완료</div>
+        </div>
+        <div class="wf-card wf-card-blue">
+          <div class="wf-card-title">체중 이동 연습</div>
+          <div class="wf-card-sub">AI 추천 — 밸런스 보드 활용</div>
+          <div class="wf-progress-bar"><div class="wf-progress-fill" style="width:0%;background:var(--blue)"></div></div>
+          <div class="u-txt-xxs">미시작</div>
+        </div>
+
+        <!-- 개선안 5: Next Action Nudge -->
+        <div style="margin-top:16px;padding:16px;background:linear-gradient(135deg,rgba(5,150,105,.08),rgba(37,99,235,.08));border-radius:var(--radius);border:1px solid rgba(5,150,105,.2);text-align:center">
+          <div style="font-size:13px;font-weight:700;color:var(--accent);margin-bottom:4px">오늘 3회 더 연습하면 T2 → T1 승급!</div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:10px">승급까지 남은 스윙: 3회 · 예상 도달 점수 78점</div>
+          <button class="wf-btn wf-btn-primary" style="margin-bottom:0;padding:12px" onclick="navTo('member-camera')">지금 바로 촬영하기 →</button>
+        </div>
+      </div>
+    `
+  },
+
+  'member-progress': {
+    label: '진도',
+    render: () => `
+      <div class="screen-header">
+        <h1>진도 분석</h1>
+        <p>데이터로 보는 나의 성장</p>
+      </div>
+      <div class="screen-content">
+        <div class="wf-stat-row">
+          <div class="wf-stat">
+            <div class="val" style="color:var(--accent)">82</div>
+            <div class="label">현재 스윙 점수</div>
+          </div>
+          <div class="wf-stat">
+            <div class="val" style="color:var(--gold)">+15</div>
+            <div class="label">이번 달 변화</div>
+          </div>
+          <div class="wf-stat">
+            <div class="val" style="color:var(--blue)">24회</div>
+            <div class="label">총 레슨</div>
+          </div>
+        </div>
+
+        <!-- SHOULD-2: SVG 링 차트 진도 시각화 (v4 흡수) -->
+        <div class="wf-section">항목별 정확도</div>
+        <div class="wf-card" style="padding:20px">
+          <div style="display:flex;justify-content:space-around;text-align:center">
+            <div>
+              ${Ring(82, 82, 'var(--accent)', CONST.RING_SM_CIRC)}
+              <div style="font-size:11px;font-weight:600;margin-top:6px">스윙 점수</div>
+              <div style="font-size:10px;color:var(--accent)">+15 ↑</div>
+            </div>
+            <div>
+              ${Ring('68%', 68, 'var(--gold)', CONST.RING_SM_CIRC)}
+              <div style="font-size:11px;font-weight:600;margin-top:6px">Feel 정확도</div>
+              <div style="font-size:10px;color:var(--gold)">+5% ↑</div>
+            </div>
+            <div>
+              ${Ring('75%', 75, 'var(--blue)', CONST.RING_SM_CIRC)}
+              <div style="font-size:11px;font-weight:600;margin-top:6px">드릴 이행률</div>
+              <div style="font-size:10px;color:var(--blue)">3/4 완료</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="wf-section">스윙 점수 추이</div>
+        <div class="wf-chart-placeholder">
+          <span>📈 주간 스윙 점수 차트</span>
+        </div>
+
+        <div class="wf-section" onclick="navTo('member-causal-graph')" style="cursor:pointer">인과 그래프 ⓘ</div>
+        <div class="wf-card" style="padding:0;overflow:hidden">
+          <div style="background:var(--card);padding:20px;text-align:center;position:relative;min-height:140px">
+            <div style="position:absolute;left:30px;top:20px;background:var(--accent);padding:4px 10px;border-radius:12px;font-size:11px;color:white;font-weight:700">그립 압력</div>
+            <div style="position:absolute;left:50%;top:15px;transform:translateX(-50%);background:var(--gold);padding:4px 10px;border-radius:12px;font-size:11px;color:white;font-weight:700">클럽 페이스</div>
+            <div style="position:absolute;right:30px;top:20px;background:var(--blue);padding:4px 10px;border-radius:12px;font-size:11px;color:white;font-weight:700">볼 방향</div>
+            <div style="position:absolute;left:60px;top:80px;background:var(--orange);padding:4px 10px;border-radius:12px;font-size:11px;color:white;font-weight:700">체중 이동</div>
+            <div style="position:absolute;right:50px;top:80px;background:var(--coral);padding:4px 10px;border-radius:12px;font-size:11px;color:white;font-weight:700">비거리</div>
+            <svg style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none">
+              <line x1="120" y1="35" x2="175" y2="30" stroke="#2ECC71" stroke-width="2" opacity="0.5"/>
+              <line x1="220" y1="30" x2="270" y2="35" stroke="#F1C40F" stroke-width="2" opacity="0.5"/>
+              <line x1="100" y1="95" x2="175" y2="30" stroke="#E67E22" stroke-width="1.5" opacity="0.4"/>
+              <line x1="100" y1="95" x2="265" y2="95" stroke="#E67E22" stroke-width="1.5" opacity="0.4"/>
+            </svg>
+          </div>
+        </div>
+
+        <div class="wf-section">측정 신뢰도</div>
+        <div class="wf-card">
+          <div class="u-flex-between" style="margin-bottom:8px">
+            <span class="u-txt-md-bold">그립 압력</span>
+            <span class="wf-tag tier-high">T1 — High</span>
+          </div>
+          <div class="wf-progress-bar"><div class="wf-progress-fill" style="width:${M("minsu").measurements.grip.progress}%;background:var(--accent)"></div></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin:12px 0 8px">
+            <span class="u-txt-md-bold">체중 이동</span>
+            <span class="wf-tag tier-mid">T2 — Mid</span>
+          </div>
+          <div class="wf-progress-bar"><div class="wf-progress-fill" style="width:${M("minsu").measurements.weight.progress}%;background:var(--gold)"></div></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin:12px 0 8px">
+            <span class="u-txt-md-bold">힙 회전</span>
+            <span class="wf-tag tier-low">T3 — Low</span>
+          </div>
+          <div class="wf-progress-bar"><div class="wf-progress-fill" style="width:${M("minsu").measurements.hip.progress}%;background:var(--coral)"></div></div>
+          <div style="font-size:10px;color:var(--muted);margin-top:10px">[특허 P3] 데이터 ${CONST.TIER_UP_MIN_DATA}회 이상 수집 시 T2→T1 자동 승급</div>
+        </div>
+
+        <!-- 개선안 9: Progress Story — AI 성장 내러티브 -->
+        <div class="wf-section">나의 성장 스토리</div>
+        <div class="wf-card" style="background:linear-gradient(135deg,rgba(5,150,105,.03),rgba(217,119,6,.03));border:1px solid rgba(5,150,105,.15);padding:20px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+            <span style="font-size:18px">📖</span>
+            <span style="font-size:14px;font-weight:800;color:var(--text-main)">${M("minsu").name}님의 골프 여정</span>
+            <span style="font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(5,150,105,.1);color:var(--accent);font-weight:600;margin-left:auto">AI 생성</span>
+          </div>
+          <div style="font-size:13px;color:var(--text-main);line-height:1.8">
+            3주 전 첫 레슨에서 <strong style="color:var(--coral)">67점</strong>으로 시작한 민수님. 그립 압력을 잡기 시작하면서 꾸준히 성장해 지금은 <strong style="color:var(--accent)">78점</strong>까지 올라왔습니다.
+            특히 어드레스 자세가 <strong>A+</strong>로 안정되면서 전체 스윙의 기초가 탄탄해졌어요.
+          </div>
+          <div class="wf-card-divider"></div>
+          <div style="font-size:13px;color:var(--text-main);line-height:1.8">
+            다음 목표는 체중 이동 정체를 돌파하는 것! 김프로 코치님은 "하프스윙에 집중하면 금방 80점대로 올라갈 수 있다"고 말씀하셨습니다.
+            <strong style="color:var(--accent)">80점까지 남은 거리: 약 2점!</strong>
+          </div>
+          <div style="display:flex;justify-content:center;gap:24px;margin-top:14px;padding:12px;background:var(--card);border-radius:8px;border:1px solid var(--border)">
+            <div style="text-align:center">
+              <div class="u-txt-xxs">시작 점수</div>
+              <div style="font-size:18px;font-weight:800;color:var(--coral)">67</div>
+            </div>
+            <div style="display:flex;align-items:center;color:var(--accent);font-weight:800">→ → →</div>
+            <div style="text-align:center">
+              <div class="u-txt-xxs">현재 점수</div>
+              <div style="font-size:18px;font-weight:800;color:var(--accent)">78</div>
+            </div>
+            <div style="display:flex;align-items:center;color:var(--muted);font-weight:800">→ → →</div>
+            <div style="text-align:center">
+              <div class="u-txt-xxs">다음 목표</div>
+              <div style="font-size:18px;font-weight:800;color:var(--gold)">80</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `
+  },
+
+  'member-profile': {
+    label: '내 정보',
+    render: () => `
+      <div class="screen-header">
+        <h1>내 정보</h1>
+      </div>
+      <div class="screen-content">
+        <div style="text-align:center;padding:16px 0">
+          <div class="wf-avatar" style="width:72px;height:72px;margin:0 auto;background:var(--accent);font-size:28px;color:white">민</div>
+          <div style="font-size:18px;font-weight:700;margin-top:10px">민수</div>
+          <div style="font-size:13px;color:var(--muted)">회원 · 핸디캡 18</div>
+        </div>
+
+        <div class="wf-section">연결된 프로</div>
+        <div class="wf-list-item">
+          <div class="wf-avatar" style="background:var(--gold);color:white">김</div>
+          <div class="wf-list-info">
+            <div class="name">김프로 코치</div>
+            <div class="meta">레슨 24회 · 연결 3개월</div>
+          </div>
+          ${StatusBadge("활성", "active")}
+        </div>
+
+        <!-- 개선안 3: Badge Collection -->
+        <div class="wf-section">나의 배지 <span style="font-size:11px;color:var(--muted);font-weight:500">3/8 획득</span></div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px">
+          ${M("minsu").badges.earned.map(b => BadgeIcon(b.icon, b.name, b.color, b.bg)).join('\n          ')}
+          ${M("minsu").badges.locked.map(b => BadgeIcon(b.icon, b.name, null, null, true)).join('\n          ')}
+        </div>
+
+        <div class="wf-section">구독 플랜</div>
+        <div class="wf-card wf-card-accent">
+          <div class="u-flex-between">
+            <div>
+              <div class="wf-card-title">프리미엄 회원</div>
+              <div class="wf-card-sub">월 ${fmtWon(M("minsu").sub.price)} · 다음 결제일 ${M("minsu").sub.nextPay}</div>
+            </div>
+            ${StatusBadge("활성", "active")}
+          </div>
+        </div>
+
+        <div class="wf-section">메뉴</div>
+        ${MenuItem('결제 내역', null, "navTo('member-payment')")}
+        ${MenuItem('알림 설정', null, "navTo('member-notifications')")}
+        ${MenuItem('앱 정보')}
+        <div class="u-mt-16">
+          <button class="wf-btn wf-btn-secondary" style="color:var(--coral);border-color:var(--coral)">로그아웃</button>
+        </div>
+      </div>
+    `
+  },
+
+  // ━━━━ MEMBER SUB-SCREENS ━━━━
+  'member-lesson-detail': {
+    label: '레슨 상세',
+    render: () => `
+      ${subHeader('레슨 상세')}
+      <div class="screen-content u-screen-sub">
+        <div class="wf-card" style="text-align:center;padding:24px">
+          <div style="font-size:32px;font-weight:800;color:var(--accent)">D-2</div>
+          <div style="font-size:16px;font-weight:700;margin-top:8px">3월 13일 (목) 14:00 ~ 15:00</div>
+          <div style="font-size:13px;color:var(--muted);margin-top:4px">실내 연습장 A · 드라이버 교정</div>
+        </div>
+        <div class="wf-section">담당 프로</div>
+        <div class="wf-list-item">
+          <div class="wf-avatar" style="background:var(--gold);color:white">김</div>
+          <div class="wf-list-info">
+            <div class="name">김프로 코치</div>
+            <div class="meta">${DATA.pro.org} · ${DATA.pro.exp} · 평점 4.9</div>
+          </div>
+        </div>
+        <div class="wf-section">레슨 목표</div>
+        <div class="wf-card">
+          <div class="wf-card-title">이번 레슨 포커스</div>
+          <div class="wf-card-sub">그립 압력 조절 → 클럽 페이스 제어 → 볼 방향성 개선</div>
+          <div class="u-mt-8"><span class="wf-tag tier-high">P2 인과경로 기반</span></div>
+        </div>
+        <!-- SHOULD-1: 레슨 타임라인 (SwingBook 패턴, v4 흡수) -->
+        <div class="wf-section">레슨 타임라인</div>
+        <div style="position:relative;padding-left:20px;border-left:2px solid var(--border);margin-left:10px">
+          <div style="position:relative;padding-bottom:16px">
+            <div style="position:absolute;left:-27px;top:2px;width:14px;height:14px;border-radius:50%;background:var(--accent);border:2px solid var(--surface)"></div>
+            <div class="wf-card" style="margin-bottom:0" onclick="navTo('member-report-detail')">
+              <div class="u-flex-between">
+                <div>
+                  <div style="font-size:12px;color:var(--accent);font-weight:700">3월 13일 (예정)</div>
+                  <div style="font-size:13px;font-weight:600;margin-top:2px">드라이버 교정 — 그립 압력</div>
+                </div>
+                <span class="wf-badge" class="u-tag-gold">예정</span>
+              </div>
+            </div>
+          </div>
+          <div style="position:relative;padding-bottom:16px">
+            <div style="position:absolute;left:-27px;top:2px;width:14px;height:14px;border-radius:50%;background:var(--gold);border:2px solid var(--surface)"></div>
+            <div class="wf-card" style="margin-bottom:0" onclick="navTo('member-report-detail')">
+              <div>
+                <div style="font-size:12px;color:var(--gold);font-weight:700">3월 9일</div>
+                <div style="font-size:13px;font-weight:600;margin-top:2px">드라이버 어드레스 교정</div>
+                <div style="font-size:11px;color:var(--muted);margin-top:4px">스윙 점수 74→78 (+4) · Feel 정확도 65%</div>
+              </div>
+              <span style="color:var(--accent);font-size:11px;margin-top:4px;display:inline-block">리포트 보기 →</span>
+            </div>
+          </div>
+          <div style="position:relative;padding-bottom:16px">
+            <div style="position:absolute;left:-27px;top:2px;width:14px;height:14px;border-radius:50%;background:var(--blue);border:2px solid var(--surface)"></div>
+            <div class="wf-card" style="margin-bottom:0">
+              <div>
+                <div style="font-size:12px;color:var(--blue);font-weight:700">3월 5일</div>
+                <div style="font-size:13px;font-weight:600;margin-top:2px">아이언 임팩트 연습</div>
+                <div style="font-size:11px;color:var(--muted);margin-top:4px">스윙 점수 71→74 (+3) · Feel 정확도 60%</div>
+              </div>
+            </div>
+          </div>
+          <div style="position:relative">
+            <div style="position:absolute;left:-27px;top:2px;width:14px;height:14px;border-radius:50%;background:var(--card2);border:2px solid var(--border)"></div>
+            <div class="wf-card" style="margin-bottom:0;opacity:.6">
+              <div>
+                <div style="font-size:12px;color:var(--muted);font-weight:700">3월 1일</div>
+                <div style="font-size:13px;font-weight:600;margin-top:2px">첫 레슨 — 스윙 진단</div>
+                <div style="font-size:11px;color:var(--muted);margin-top:4px">스윙 점수 67 (초기)</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="wf-section">준비물</div>
+        <div class="wf-card">
+          <div style="font-size:13px;line-height:1.8">
+            ✅ 드라이버 (본인 클럽)<br>
+            ✅ 골프 장갑<br>
+            ✅ 편한 운동복<br>
+            📱 스윙 촬영용 스마트폰 거치대
+          </div>
+        </div>
+        <button class="wf-btn wf-btn-primary" onclick="navTo('member-message')">프로에게 메시지 보내기</button>
+        <button class="wf-btn wf-btn-secondary" style="color:var(--coral);border-color:var(--coral)">레슨 취소</button>
+      </div>`
+  },
+
+  'member-report-detail': {
+    label: '리포트 상세',
+    render: () => `
+      ${subHeader('레슨 리포트', '<span class="wf-tag tier-high">T1 High</span>')}
+      <div class="screen-content u-screen-sub">
+        <div style="font-size:13px;color:var(--muted);margin-bottom:12px">3월 9일 · 김프로 코치 · 드라이버 어드레스 교정</div>
+        <div class="wf-section">Layer 1 — 스윙 요약</div>
+        <div class="wf-card" style="text-align:center;padding:20px">
+          <div style="font-size:48px;font-weight:800;color:var(--accent)">82</div>
+          <div style="font-size:13px;color:var(--muted)">스윙 점수 · 지난 레슨 대비 +7</div>
+          <div style="height:80px;background:var(--card2);border-radius:8px;margin-top:12px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:12px">🎥 스켈레톤 오버레이 리플레이</div>
+        </div>
+        <div class="wf-section">Layer 2 — 핵심 인과 경로</div>
+        <div class="wf-card wf-card-accent">
+          <div style="font-size:13px;font-weight:700;margin-bottom:8px;color:var(--accent)">Critical Path</div>
+          <div style="display:flex;align-items:center;gap:6px;font-size:12px;flex-wrap:wrap">
+            <span class="wf-tag" style="background:var(--accent);color:white">그립 압력 ↑</span>
+            <span style="color:var(--accent)">→</span>
+            <span class="wf-tag" style="background:var(--gold);color:white">페이스 닫힘</span>
+            <span style="color:var(--accent)">→</span>
+            <span class="wf-tag" style="background:var(--coral);color:white">훅 구질</span>
+          </div>
+        </div>
+        <div class="wf-section">프로 코멘트</div>
+        <div class="wf-card" style="border-left:3px solid var(--gold)">
+          <div style="font-size:13px;line-height:1.7">"그립을 너무 강하게 잡고 있어서 임팩트 시 클럽 페이스가 닫히는 현상이 있습니다. 그립 압력을 10점 만점에 4 정도로 유지하는 연습이 필요합니다."</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:6px">— 김프로 · 3/9</div>
+        </div>
+        <div class="wf-section">Layer 3 — 추천 드릴</div>
+        <div class="wf-card wf-card-accent" onclick="navTo('member-drill-detail')">
+          <div class="wf-card-title">그립 압력 감지 드릴</div>
+          <div class="wf-card-sub">3세트 × 10회 · 예상 15분</div>
+          <button class="wf-btn wf-btn-primary" style="margin-top:10px;margin-bottom:0" onclick="event.stopPropagation();navTo('member-drill-detail')">이 드릴 연습 시작하기</button>
+        </div>
+        <div class="wf-card">
+          <div class="wf-card-title">체중 이동 연습</div>
+          <div class="wf-card-sub">밸런스 보드 활용 · 2세트 × 8회</div>
+        </div>
+        <div style="padding:12px;background:var(--card);border-radius:var(--radius);text-align:center;margin-top:8px">
+          <div class="u-txt-sm">🔒 근본 원인 상세 분석</div>
+          <div style="font-size:11px;color:var(--accent);margin-top:4px">프리미엄 회원 전용</div>
+        </div>
+      </div>`
+  },
+
+  'member-swing-result': {
+    label: '스윙 분석',
+    render: () => `
+      ${subHeader('스윙 분석 결과')}
+      <div class="screen-content u-screen-sub">
+        <div class="wf-card" style="padding:0;overflow:hidden">
+          <div style="height:200px;background:linear-gradient(135deg,#111827,#1F2937);display:flex;align-items:center;justify-content:center;position:relative">
+            <svg width="60" height="60" fill="var(--accent)" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+            <div style="position:absolute;bottom:8px;left:12px;right:12px;display:flex;justify-content:space-between;font-size:10px;color:var(--muted)">
+              <span>00:00</span><span>AI 관절 오버레이 ON</span><span>00:03</span>
+            </div>
+          </div>
+        </div>
+        <div style="text-align:center;padding:16px">
+          <div style="font-size:48px;font-weight:800;color:var(--accent)">82</div>
+          <div style="font-size:13px;color:var(--muted)">드라이버 풀스윙 · 오늘 10:32</div>
+          <div style="font-size:12px;color:var(--accent);margin-top:4px">🔊 "체중이 뒤에 있습니다. 82점입니다."</div>
+        </div>
+        <div class="wf-section">구간별 분석</div>
+        <div class="wf-stat-row">
+          ${StatCard('A+', '어드레스', 'var(--accent)', 'font-size:16px')}
+          ${StatCard('B+', '백스윙', 'var(--gold)', 'font-size:16px')}
+          ${StatCard('C', '임팩트', 'var(--coral)', 'font-size:16px')}
+          ${StatCard('A', '팔로스루', 'var(--accent)', 'font-size:16px')}
+        </div>
+        <div class="wf-section">템포 / 리듬</div>
+        <div class="wf-chart-placeholder" style="height:100px"><span>📊 백스윙:다운스윙 = 3.2:1</span></div>
+        <div class="wf-section">이전 스윙 비교</div>
+        <div class="wf-card">
+          <div style="display:flex;justify-content:space-between;font-size:13px">
+            <span>3/9 촬영</span><span style="color:var(--gold)">점수 75</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;margin-top:4px">
+            <span>오늘</span><span style="color:var(--accent)">점수 82 (+7)</span>
+          </div>
+          <div class="wf-progress-bar" class="u-mt-8"><div class="wf-progress-fill" style="width:82%;background:var(--accent)"></div></div>
+        </div>
+        <div class="wf-card" style="background:linear-gradient(135deg,rgba(46,204,113,.08),rgba(52,152,219,.08));border:1px solid rgba(46,204,113,.3);text-align:center;padding:20px 16px;cursor:pointer" onclick="navTo('member-causal-graph')">
+          <div style="font-size:24px;margin-bottom:8px">🔍</div>
+          <div style="font-size:15px;font-weight:700;color:var(--light)">내 스윙의 근본 원인 분석하기</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:6px">임팩트 C등급 — 왜 점수가 낮을까?</div>
+          <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-top:10px">
+            <span style="font-size:11px;padding:3px 10px;border-radius:10px;background:rgba(46,204,113,.15);color:var(--accent);font-weight:600">🔒 프리미엄 전용</span>
+          </div>
+          <div style="font-size:10px;color:var(--muted);margin-top:8px">인과 그래프 · 맞춤 드릴 · 교정 로드맵</div>
+        </div>
+
+        <button class="wf-btn wf-btn-primary" onclick="navTo('member-camera')">다시 촬영하기</button>
+        <button class="wf-btn wf-btn-secondary" onclick="navTo('member-message')">프로에게 보내기</button>
+
+        <!-- 개선안 5: Next Action Nudge (스윙 결과 후) -->
+        <div style="margin-top:14px;padding:14px;background:linear-gradient(135deg,rgba(5,150,105,.06),rgba(217,119,6,.06));border-radius:var(--radius);border:1px solid rgba(5,150,105,.15)">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:20px">💡</span>
+            <div>
+              <div style="font-size:12px;font-weight:700;color:var(--accent)">그립 압력 드릴이 이 점수를 올려줄 수 있어요</div>
+              <div class="u-txt-xs">프로 추천 드릴 · 예상 +5점 향상</div>
+            </div>
+          </div>
+          <button class="wf-btn wf-btn-secondary" style="margin-top:8px;margin-bottom:0;padding:10px;font-size:12px" onclick="navTo('member-drill-detail')">추천 드릴 시작 →</button>
+        </div>
+      </div>`
+  },
+
+  'member-camera': {
+    label: '스윙 촬영',
+    render: () => `
+      ${subHeader('스윙 촬영')}
+      <!-- MUST-5: 카메라뷰 강화 (v4 흡수) + 개선안 4: 카메라 그라디언트 -->
+      <div style="height:calc(100% - 52px);background:linear-gradient(180deg,#0A1628 0%,#0F1117 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative">
+        <div style="color:var(--muted);font-size:14px;margin-bottom:20px">📹 카메라 뷰파인더</div>
+        <!-- MediaPipe 가이드 프레임 -->
+        <div style="width:200px;height:300px;border:2px dashed var(--accent);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;position:relative">
+          <svg width="40" height="40" fill="var(--accent)" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4z"/></svg>
+          <div style="font-size:11px;color:var(--accent)">MediaPipe 가이드</div>
+          <div class="u-txt-xxs">전신이 보이도록 서주세요</div>
+          <!-- 관절 포인트 시뮬레이션 -->
+          <div style="position:absolute;top:30px;left:50%;transform:translateX(-50%);width:8px;height:8px;border-radius:50%;background:var(--accent);opacity:.5"></div>
+          <div style="position:absolute;top:80px;left:35%;width:6px;height:6px;border-radius:50%;background:var(--accent);opacity:.4"></div>
+          <div style="position:absolute;top:80px;right:35%;width:6px;height:6px;border-radius:50%;background:var(--accent);opacity:.4"></div>
+          <div style="position:absolute;top:150px;left:50%;transform:translateX(-50%);width:8px;height:8px;border-radius:50%;background:var(--gold);opacity:.5"></div>
+        </div>
+        <!-- 상단 좌: AI 추적 + AUTO DETECT 배지 -->
+        <div style="position:absolute;top:12px;left:12px;display:flex;flex-direction:column;gap:6px">
+          <div style="font-size:11px;color:var(--accent);background:rgba(0,0,0,.6);padding:4px 10px;border-radius:12px">AI 관절 추적 ${CONST.AI_JOINT_POINTS}pts</div>
+          <div style="font-size:10px;color:white;background:rgba(5,150,105,.8);padding:3px 8px;border-radius:8px;font-weight:700">AUTO DETECT ON</div>
+        </div>
+        <!-- 상단 우: 기능 버튼 -->
+        <div style="position:absolute;top:12px;right:12px;display:flex;flex-direction:column;gap:8px">
+          <div style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px;color:white">🔄</div>
+          <div style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px;color:white">⏱</div>
+          <div style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px;color:white">🔊</div>
+        </div>
+        <!-- 드릴 오버레이 -->
+        <div style="position:absolute;top:55%;left:12px;right:12px;background:rgba(0,0,0,.7);border-radius:10px;padding:10px 14px;border:1px solid rgba(5,150,105,.3)">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <div>
+              <div style="font-size:11px;color:var(--accent);font-weight:700">현재 드릴: 그립 압력 감지</div>
+              <div style="font-size:10px;color:rgba(255,255,255,.6);margin-top:2px">3세트 × 10회 · 4/10 진행</div>
+            </div>
+            <div style="font-size:10px;color:rgba(255,255,255,.5);border:1px solid rgba(255,255,255,.2);padding:2px 8px;border-radius:6px;cursor:pointer">드릴 종료</div>
+          </div>
+          <div style="height:3px;background:rgba(255,255,255,.15);border-radius:2px;margin-top:8px"><div style="width:40%;height:100%;background:var(--accent);border-radius:2px"></div></div>
+        </div>
+        <!-- 프로 음성 팁 배너 -->
+        <div style="position:absolute;top:42%;left:12px;right:12px;background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.3);border-radius:8px;padding:8px 12px;display:flex;align-items:center;gap:8px">
+          <div style="font-size:14px">🗣️</div>
+          <div style="font-size:11px;color:rgba(255,255,255,.9);flex:1">"그립을 살짝 느슨하게, 압력 4 유지!"</div>
+          <div style="font-size:9px;color:rgba(255,255,255,.5)">김프로</div>
+        </div>
+        <!-- 카운트다운 -->
+        <div style="position:absolute;bottom:100px;font-size:24px;font-weight:800;color:var(--gold)">3</div>
+        <!-- 하단 컨트롤 -->
+        <div style="position:absolute;bottom:30px;display:flex;align-items:center;gap:24px">
+          <div style="width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;cursor:pointer">
+            <svg width="20" height="20" fill="rgba(255,255,255,.7)" viewBox="0 0 24 24"><path d="M19 7v10H5V7h14m0-2H5c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2z"/></svg>
+          </div>
+          <div style="width:72px;height:72px;border-radius:50%;border:4px solid var(--coral);display:flex;align-items:center;justify-content:center;cursor:pointer" onclick="navTo('member-swing-result')">
+            <div style="width:56px;height:56px;border-radius:50%;background:var(--coral)"></div>
+          </div>
+          <div style="width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;font-size:10px;color:rgba(255,255,255,.7)">갤러리</div>
+        </div>
+        <div style="position:absolute;bottom:8px;font-size:10px;color:var(--muted)">[P1: 3-Layer] Raw→Processed→Report</div>
+      </div>`
+  },
+
+  'member-message': {
+    label: '메시지',
+    render: () => `
+      ${subHeader('프로에게 메시지')}
+      <div class="screen-content u-screen-sub">
+        <div class="wf-list-item" style="margin-bottom:16px">
+          <div class="wf-avatar" style="background:var(--gold);color:white">김</div>
+          <div class="wf-list-info">
+            <div class="name">김프로 코치</div>
+            <div class="meta">보통 1시간 내 답변</div>
+          </div>
+          <div class="wf-badge" class="u-tag-green">온라인</div>
+        </div>
+        <div style="flex:1;padding:0 4px">
+          <div style="display:flex;gap:8px;margin-bottom:12px">
+            <div class="wf-avatar" style="width:32px;height:32px;background:var(--gold);color:white;font-size:12px;min-width:32px">김</div>
+            <div style="background:var(--card);border-radius:12px 12px 12px 0;padding:10px 14px;max-width:75%">
+              <div style="font-size:13px;line-height:1.5">다음 레슨 때 영상 가져오시면 같이 분석해봐요!</div>
+              <div style="font-size:10px;color:var(--muted);margin-top:4px">3/9 15:30</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;margin-bottom:12px;justify-content:flex-end">
+            <div style="background:var(--accent);color:white;border-radius:12px 12px 0 12px;padding:10px 14px;max-width:75%">
+              <div style="font-size:13px;line-height:1.5">네 프로님! 오늘 연습 영상 보내드려요</div>
+              <div style="font-size:10px;opacity:.7;margin-top:4px">3/10 09:15</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;margin-bottom:12px;justify-content:flex-end">
+            <div style="background:var(--card);border-radius:12px;padding:8px;max-width:75%;cursor:pointer" onclick="navTo('member-swing-result')">
+              <div style="height:80px;background:var(--card2);border-radius:8px;display:flex;align-items:center;justify-content:center">
+                <svg width="24" height="24" fill="var(--accent)" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+              </div>
+              <div style="font-size:11px;color:var(--muted);margin-top:4px">드라이버 풀스윙.mp4</div>
+            </div>
+          </div>
+        </div>
+        <div style="padding:12px 16px;background:var(--surface);border-top:1px solid var(--border);display:flex;gap:8px;align-items:center;position:sticky;bottom:0">
+          <div style="width:36px;height:36px;border-radius:50%;background:var(--card);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;flex-shrink:0">📎</div>
+          <input class="wf-input" style="margin:0;flex:1" placeholder="메시지 입력..." />
+          <div style="width:36px;height:36px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;color:white;font-weight:700">↑</div>
+        </div>
+      </div>`
+  },
+
+  'member-payment': {
+    label: '결제 내역',
+    render: () => `
+      ${subHeader('결제 내역')}
+      <div class="screen-content u-screen-sub">
+        <div class="wf-card wf-card-accent">
+          <div class="u-flex-between">
+            <div>
+              <div class="wf-card-title">프리미엄 구독</div>
+              <div class="wf-card-sub">다음 결제일: 3월 28일</div>
+            </div>
+            <div style="font-size:18px;font-weight:800;color:var(--accent)">₩9,900/월</div>
+          </div>
+        </div>
+        <div class="wf-section">3월 결제 내역</div>
+        <div class="wf-card">
+          <div class="u-flex-between">
+            <div>
+              <div class="wf-card-title">프리미엄 구독 결제</div>
+              <div class="wf-card-sub">2/28 · Toss Payments · 카드</div>
+            </div>
+            <div style="font-weight:700">₩9,900</div>
+          </div>
+        </div>
+        <div class="wf-card">
+          <div class="u-flex-between">
+            <div>
+              <div class="wf-card-title">레슨 패키지 (8회)</div>
+              <div class="wf-card-sub">2/25 · Toss Payments · 카드</div>
+            </div>
+            <div style="font-weight:700">₩480,000</div>
+          </div>
+        </div>
+        <div class="wf-section">2월 결제 내역</div>
+        <div class="wf-card">
+          <div class="u-flex-between">
+            <div>
+              <div class="wf-card-title">프리미엄 구독 결제</div>
+              <div class="wf-card-sub">1/28 · Toss Payments</div>
+            </div>
+            <div style="font-weight:700">₩9,900</div>
+          </div>
+        </div>
+        <div class="wf-card">
+          <div class="u-flex-between">
+            <div>
+              <div class="wf-card-title">레슨 패키지 (4회)</div>
+              <div class="wf-card-sub">1/15 · Toss Payments</div>
+            </div>
+            <div style="font-weight:700">₩260,000</div>
+          </div>
+        </div>
+        <div style="text-align:center;margin-top:16px;font-size:12px;color:var(--muted)">Toss Payments 연동 · 영수증은 이메일로 발송됩니다</div>
+      </div>`
+  },
+
+  'member-notifications': {
+    label: '알림 설정',
+    render: () => `
+      ${subHeader('알림 설정')}
+      <div class="screen-content u-screen-sub">
+        <div class="wf-section">레슨 알림</div>
+        <div class="wf-list-item">
+          <div class="wf-list-info"><div class="name">레슨 리마인더</div><div class="meta">1시간 전 알림</div></div>
+          <div class="wf-toggle on" onclick="this.classList.toggle('on');this.classList.toggle('off')"></div>
+        </div>
+        <div class="wf-list-item">
+          <div class="wf-list-info"><div class="name">레슨 변경 알림</div><div class="meta">시간/장소 변경 시</div></div>
+          <div class="wf-toggle on" onclick="this.classList.toggle('on');this.classList.toggle('off')"></div>
+        </div>
+        <div class="wf-section">리포트 알림</div>
+        <div class="wf-list-item">
+          <div class="wf-list-info"><div class="name">리포트 도착</div><div class="meta">프로가 리포트 전달 시</div></div>
+          <div class="wf-toggle on" onclick="this.classList.toggle('on');this.classList.toggle('off')"></div>
+        </div>
+        <div class="wf-list-item">
+          <div class="wf-list-info"><div class="name">AI 분석 완료</div><div class="meta">스윙 분석 결과 도착</div></div>
+          <div class="wf-toggle on" onclick="this.classList.toggle('on');this.classList.toggle('off')"></div>
+        </div>
+        <div class="wf-section">연습 알림</div>
+        <div class="wf-list-item">
+          <div class="wf-list-info"><div class="name">드릴 리마인더</div><div class="meta">미완료 드릴 하루 1회</div></div>
+          <div class="wf-toggle on" onclick="this.classList.toggle('on');this.classList.toggle('off')"></div>
+        </div>
+        <div class="wf-list-item">
+          <div class="wf-list-info"><div class="name">주간 진도 리포트</div><div class="meta">매주 월요일 09:00</div></div>
+          <div class="wf-toggle off" onclick="this.classList.toggle('on');this.classList.toggle('off')"></div>
+        </div>
+        <div class="wf-section">마케팅</div>
+        <div class="wf-list-item">
+          <div class="wf-list-info"><div class="name">이벤트/혜택 알림</div><div class="meta">프로모션, 할인 정보</div></div>
+          <div class="wf-toggle off" onclick="this.classList.toggle('on');this.classList.toggle('off')"></div>
+        </div>
+      </div>`
+  },
+
+  'member-drill-detail': {
+    label: '드릴 상세',
+    render: () => `
+      ${subHeader('드릴 상세')}
+      <div class="screen-content u-screen-sub">
+        <div class="wf-card" style="text-align:center;padding:20px">
+          <div style="font-size:18px;font-weight:800">그립 압력 감지 드릴</div>
+          <div style="font-size:13px;color:var(--muted);margin-top:4px">프로 추천 · 예상 15분</div>
+          <div class="wf-progress-bar" class="u-mt-12"><div class="wf-progress-fill" style="width:40%;background:var(--accent)"></div></div>
+          <div style="font-size:12px;color:var(--accent);margin-top:4px">4/10 완료 (40%)</div>
+        </div>
+        <div class="wf-section">드릴 설명</div>
+        <div class="wf-card">
+          <div style="font-size:13px;line-height:1.7">
+            <strong>목적:</strong> 그립 압력을 일정하게 유지하여 임팩트 시 클럽 페이스를 제어하는 능력 향상<br><br>
+            <strong>방법:</strong><br>
+            1. 그립을 10점 만점 중 4 정도의 압력으로 잡기<br>
+            2. 하프 스윙으로 10회 반복<br>
+            3. 매 스윙 후 그립 압력 체크<br><br>
+            <strong>주의:</strong> 임팩트 구간에서 그립을 꽉 쥐지 않도록 주의
+          </div>
+        </div>
+        <div class="wf-section">세트 진행</div>
+        <div class="wf-card">
+          <div class="u-flex-between" style="margin-bottom:8px">
+            <span style="font-size:14px;font-weight:700">세트 1</span>
+            <span class="wf-tag tier-high">완료 ✓</span>
+          </div>
+          <div class="wf-progress-bar"><div class="wf-progress-fill" style="width:100%;background:var(--accent)"></div></div>
+        </div>
+        <div class="wf-card">
+          <div class="u-flex-between" style="margin-bottom:8px">
+            <span style="font-size:14px;font-weight:700">세트 2</span>
+            <span style="font-size:12px;color:var(--gold)">4/10</span>
+          </div>
+          <div class="wf-progress-bar"><div class="wf-progress-fill" style="width:40%;background:var(--gold)"></div></div>
+        </div>
+        <div class="wf-card">
+          <div class="u-flex-between" style="margin-bottom:8px">
+            <span style="font-size:14px;font-weight:700">세트 3</span>
+            <span style="font-size:12px;color:var(--muted)">미시작</span>
+          </div>
+          <div class="wf-progress-bar"><div class="wf-progress-fill" style="width:0%;background:var(--muted)"></div></div>
+        </div>
+        <button class="wf-btn wf-btn-primary" onclick="navTo('member-camera')">이 드릴 촬영 시작하기</button>
+
+        <!-- 개선안 5: Next Action Nudge (드릴 완료 후) -->
+        <div style="margin-top:12px;padding:14px;background:rgba(37,99,235,.06);border-radius:var(--radius);border:1px solid rgba(37,99,235,.15);text-align:center">
+          <div style="font-size:12px;font-weight:700;color:var(--blue)">세트 2를 마무리하면 67% 달성!</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">다음 드릴 "체중 이동 연습"이 기다리고 있어요</div>
+        </div>
+      </div>`
+  },
+
+  'member-causal-graph': {
+    label: '인과 그래프',
+    render: () => `
+      ${subHeader('인과 그래프 상세', '<span class="wf-tag" class="u-tag-blue">P2 특허</span>')}
+      <div class="screen-content u-screen-sub">
+        <div class="wf-card" style="padding:20px;text-align:center;position:relative;min-height:200px">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:16px">Causal Graph Engine — 스윙 요소 간 인과관계</div>
+          <div style="position:relative;height:160px">
+            <div style="position:absolute;left:20px;top:0;background:var(--accent);padding:6px 14px;border-radius:16px;font-size:12px;color:white;font-weight:700;cursor:pointer" onclick="navTo('member-drill-detail')">그립 압력</div>
+            <div style="position:absolute;left:50%;top:0;transform:translateX(-50%);background:var(--gold);padding:6px 14px;border-radius:16px;font-size:12px;color:white;font-weight:700">클럽 페이스</div>
+            <div style="position:absolute;right:20px;top:0;background:var(--blue);padding:6px 14px;border-radius:16px;font-size:12px;color:white;font-weight:700">볼 방향</div>
+            <div style="position:absolute;left:40px;top:80px;background:var(--orange);padding:6px 14px;border-radius:16px;font-size:12px;color:white;font-weight:700">체중 이동</div>
+            <div style="position:absolute;right:30px;top:80px;background:var(--coral);padding:6px 14px;border-radius:16px;font-size:12px;color:white;font-weight:700">비거리</div>
+            <div style="position:absolute;left:50%;top:140px;transform:translateX(-50%);background:var(--card2);padding:6px 14px;border-radius:16px;font-size:12px;color:var(--light);font-weight:700">임팩트 위치</div>
+          </div>
+        </div>
+        <div class="wf-section">인과 강도</div>
+        <div class="wf-card">
+          <div style="font-size:13px;margin-bottom:8px"><span style="color:var(--accent)">━━</span> 그립 압력 → 클럽 페이스 <strong style="color:var(--accent)">강함</strong></div>
+          <div style="font-size:13px;margin-bottom:8px"><span style="color:var(--gold)">━━</span> 클럽 페이스 → 볼 방향 <strong style="color:var(--gold)">중간</strong></div>
+          <div style="font-size:13px;margin-bottom:8px"><span style="color:var(--orange)">━</span> 체중 이동 → 임팩트 위치 <strong style="color:var(--orange)">중간</strong></div>
+          <div style="font-size:13px"><span style="color:var(--coral)">━</span> 체중 이동 → 비거리 <strong style="color:var(--coral)">약함</strong></div>
+        </div>
+        <div class="wf-card" style="background:rgba(241,196,15,.05);border:1px solid rgba(241,196,15,.2)">
+          <div style="font-size:12px;color:var(--gold)">⚠ T3(Low) 데이터 안내</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:4px">힙 회전 데이터의 신뢰도가 낮습니다. 3회 더 스윙하면 T2로 승급됩니다.</div>
+          <button class="wf-btn wf-btn-primary" style="margin-top:10px;margin-bottom:0" onclick="navTo('member-camera')">추가 스윙 촬영하기</button>
+        </div>
+      </div>`
+  },
+
+  // ━━━━ PRO SCREENS ━━━━
+  'pro-dashboard': {
+    label: '프로 대시보드',
+    render: () => `
+      <div class="screen-header">
+        <h1>${DATA.pro.name}님, 환영합니다</h1>
+        <p>오늘의 세일즈 파이프라인 요약</p>
+      </div>
+      <div class="screen-content">
+        <div class="wf-card bg-premium" onclick="navTo('pro-members')">
+          <div class="u-flex-between">
+            <div>
+              <div class="wf-card-title" style="color:#FCA5A5">🔥 연장 임박 회원 (잔여 1-2회)</div>
+              <div class="wf-card-sub" style="color:#E5E7EB;font-size:24px;font-weight:800;margin-top:4px">4명 대기 중</div>
+            </div>
+            <svg width="32" height="32" fill="#FCA5A5" viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/></svg>
+          </div>
+        </div>
+        <div class="wf-stat-row">
+          <div class="wf-stat">
+            <div class="val" style="color:var(--gold)">${DATA.revenue.appPayment}</div>
+            <div class="label">이달 앱내 결제액</div>
+          </div>
+          <div class="wf-stat">
+            <div class="val" style="color:var(--accent)">${DATA.revenue.convRate}</div>
+            <div class="label">리포트 결제 전환율</div>
+          </div>
+        </div>
+
+        ${isOffline ? `
+        <div class="wf-card" style="border:1px solid var(--gold);background:rgba(241,196,15,.05)">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+            <span style="font-size:14px">📡</span>
+            <div style="font-size:13px;font-weight:700;color:var(--gold)">로컬 큐: 2건 대기 중</div>
+          </div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:6px">음성 메모 1건 · 리포트 수정 1건</div>
+          <div class="sync-bar"><div class="sync-bar-fill" style="width:0%"></div></div>
+          <div class="u-txt-xxs">네트워크 복구 시 자동 동기화됩니다</div>
+        </div>
+        ` : ''}
+
+        <!-- MUST-3: AI 알림 플래그 카드 (v4 흡수) -->
+        <div class="wf-section">AI 알림 플래그</div>
+        <div class="wf-card" style="border-left:4px solid var(--coral);background:rgba(231,76,60,.04)" onclick="navTo('pro-member-detail')">
+          <div style="display:flex;align-items:flex-start;gap:10px">
+            <div style="font-size:20px;margin-top:2px">🚨</div>
+            <div style="flex:1">
+              <div style="font-size:13px;font-weight:700;color:var(--coral)">정체 감지: 민수 회원</div>
+              <div style="font-size:12px;color:var(--text-main);margin-top:4px;line-height:1.5">체중이동 점수가 3주간 72~74점에서 정체 중입니다. 드릴 변경 또는 접근 방식 전환을 검토해주세요.</div>
+              <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
+                <span class="wf-tag" style="background:rgba(231,76,60,.1);color:var(--coral);font-size:10px">3주 정체</span>
+                <span class="wf-tag" style="background:var(--card2);color:var(--muted);font-size:10px">체중이동 72-74pts</span>
+              </div>
+            </div>
+            <svg width="16" height="16" fill="var(--muted)" viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/></svg>
+          </div>
+        </div>
+        <div class="wf-card" style="border-left:4px solid var(--gold);background:rgba(241,196,15,.04)">
+          <div style="display:flex;align-items:flex-start;gap:10px">
+            <div style="font-size:20px;margin-top:2px">⚡</div>
+            <div style="flex:1">
+              <div style="font-size:13px;font-weight:700;color:var(--gold)">급성장 감지: 지영 회원</div>
+              <div style="font-size:12px;color:var(--text-main);margin-top:4px;line-height:1.5">임팩트 정확도가 최근 5회에서 68→82점으로 급상승. 칭찬 리포트를 보내보세요.</div>
+              <div style="display:flex;gap:6px;margin-top:8px">
+                <span class="wf-tag" style="background:rgba(241,196,15,.1);color:var(--gold);font-size:10px">+14점 상승</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:4px">[DC-5: Confidence Tiering] T2 이상 데이터 기반 분석만 표시</div>
+
+        <!-- 개선안 8: Pro Coaching Score -->
+        <div class="wf-section">이달의 코칭 성과</div>
+        <div class="wf-card" style="background:linear-gradient(135deg,rgba(5,150,105,.04),rgba(37,99,235,.04));border:1px solid rgba(5,150,105,.15)">
+          <div style="display:flex;gap:12px;margin-bottom:12px">
+            <div style="flex:1;text-align:center">
+              <div style="font-size:28px;font-weight:900;color:var(--accent)">${DATA.pro.coaching.impRate}%</div>
+              <div style="font-size:10px;color:var(--muted);margin-top:2px">회원 점수 향상률</div>
+            </div>
+            <div style="width:1px;background:var(--border)"></div>
+            <div style="flex:1;text-align:center">
+              <div style="font-size:28px;font-weight:900;color:var(--blue)">${DATA.pro.coaching.avgChange}</div>
+              <div style="font-size:10px;color:var(--muted);margin-top:2px">평균 점수 변화</div>
+            </div>
+            <div style="width:1px;background:var(--border)"></div>
+            <div style="flex:1;text-align:center">
+              <div style="font-size:28px;font-weight:900;color:var(--gold)">${DATA.pro.coaching.satisfaction}</div>
+              <div style="font-size:10px;color:var(--muted);margin-top:2px">리포트 만족도</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;padding:8px 10px;background:var(--card);border-radius:8px;border:1px solid var(--border)">
+            <span style="font-size:14px">📈</span>
+            <span style="font-size:11px;color:var(--text-main);font-weight:600">지난달 대비 향상률 ${DATA.pro.coaching.impDelta}, 만족도 ${DATA.pro.coaching.satDelta} 상승</span>
+          </div>
+        </div>
+
+        <div class="wf-section">오늘 일정</div>
+        <!-- SHOULD-3: 회원별 포커스 카드 (v4 흡수) -->
+        <div class="wf-card wf-card-accent" onclick="navTo('pro-lesson-briefing')">
+          <div style="display:flex;justify-content:space-between">
+            <div>
+              <div class="wf-card-title">민수 회원</div>
+              <div class="wf-card-sub">14:00-15:00 — 드라이버 교정</div>
+            </div>
+            <div class="wf-badge" class="u-tag-gold">예정</div>
+          </div>
+          <div style="margin-top:8px;padding:8px 10px;background:rgba(5,150,105,.06);border-radius:6px;display:flex;align-items:center;gap:6px">
+            <span style="font-size:12px">🎯</span>
+            <span style="font-size:11px;color:var(--accent);font-weight:600">포커스: 그립 압력 4.0 유지</span>
+            <span style="font-size:10px;color:var(--coral);margin-left:auto">🚨 3주 정체</span>
+          </div>
+          <!-- 개선안 6: Lesson Briefing 진입 -->
+          <div style="margin-top:8px;text-align:right">
+            <span style="font-size:11px;color:var(--accent);font-weight:600;cursor:pointer">📋 레슨 브리핑 보기 →</span>
+          </div>
+        </div>
+        <div class="wf-card wf-card-gold">
+          <div style="display:flex;justify-content:space-between">
+            <div>
+              <div class="wf-card-title">지영 회원</div>
+              <div class="wf-card-sub">15:30-16:30 — 아이언 임팩트</div>
+            </div>
+            <div class="wf-badge" class="u-tag-gold">예정</div>
+          </div>
+          <div style="margin-top:8px;padding:8px 10px;background:rgba(241,196,15,.06);border-radius:6px;display:flex;align-items:center;gap:6px">
+            <span style="font-size:12px">🎯</span>
+            <span style="font-size:11px;color:var(--gold);font-weight:600">포커스: 임팩트 정확도 향상</span>
+            <span style="font-size:10px;color:var(--accent);margin-left:auto">⚡ +14점 급성장</span>
+          </div>
+        </div>
+        <div class="wf-card wf-card-blue">
+          <div style="display:flex;justify-content:space-between">
+            <div>
+              <div class="wf-card-title">현우 회원</div>
+              <div class="wf-card-sub">17:00-18:00 — 쇼트게임</div>
+            </div>
+            <div class="wf-badge" class="u-tag-blue">예정</div>
+          </div>
+          <div style="margin-top:8px;padding:8px 10px;background:rgba(52,152,219,.06);border-radius:6px;display:flex;align-items:center;gap:6px">
+            <span style="font-size:12px">🎯</span>
+            <span style="font-size:11px;color:var(--blue);font-weight:600">포커스: 피칭 거리감 30-50m</span>
+          </div>
+        </div>
+
+        <div class="wf-section">최근 음성 메모</div>
+        <div class="wf-card" onclick="navTo('pro-voice-detail')">
+          <div style="display:flex;gap:12px;align-items:center">
+            <div style="width:40px;height:40px;border-radius:50%;background:rgba(46,204,113,.15);display:flex;align-items:center;justify-content:center">
+              <svg width="20" height="20" fill="var(--accent)" viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/></svg>
+            </div>
+            <div style="flex:1">
+              <div class="wf-card-title">민수 회원 레슨 메모</div>
+              <div class="wf-card-sub">3분 32초 · 오늘 14:55</div>
+            </div>
+            <span class="wf-tag tier-mid">전사완료</span>
+          </div>
+        </div>
+
+        <div class="wf-section">매출 추이</div>
+        <div class="wf-chart-placeholder">
+          <span>📊 월별 매출 차트</span>
+        </div>
+        ${isOffline ? `<div class="wf-card" style="border:1px solid var(--coral);cursor:pointer" onclick="navTo('sync-conflict')">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:14px">⚠️</span>
+            <div style="flex:1"><div style="font-size:13px;font-weight:700;color:var(--coral)">충돌 1건</div><div class="u-txt-xs">민수 리포트 · 서버 버전과 다름</div></div>
+            <span style="color:var(--muted)">→</span>
+          </div>
+        </div>` : ''}
+      </div>
+    `
+  },
+
+  'pro-members': {
+    label: '회원 관리',
+    render: () => `
+      <div class="screen-header">
+        <h1>회원 관리</h1>
+        <p>${DATA.pro.totalMembers}명의 회원</p>
+      </div>
+      <div class="screen-content">
+        <input class="wf-input" placeholder="회원 이름 검색..." />
+        <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+          <span class="wf-tag" style="background:var(--text-main);color:white;cursor:pointer">전체 ${DATA.pro.totalMembers}</span>
+          <span class="wf-tag" style="background:#FEE2E2;color:var(--coral);cursor:pointer;font-weight:800">🔥 연장 시급 4</span>
+          <span class="wf-tag" style="background:#FEF3C7;color:var(--gold);cursor:pointer;font-weight:800">💳 결제 대기 2</span>
+          <span class="wf-tag" style="background:var(--card);color:var(--muted);cursor:pointer;border:1px solid var(--border)">활성 28</span>
+          <span class="wf-tag" style="background:var(--card);color:var(--muted);cursor:pointer;border:1px solid var(--border)">비활성 4</span>
+        </div>
+
+        <div class="wf-list-item" onclick="navTo('pro-member-detail')">
+          <div class="wf-avatar" style="background:var(--accent);color:white">민</div>
+          <div class="wf-list-info">
+            <div class="name">민수</div>
+            <div class="meta">핸디캡 18 · 레슨 24회 · 최근 3/9</div>
+          </div>
+          <span class="wf-tag tier-high">↑15%</span>
+        </div>
+        <div class="wf-list-item" onclick="navTo('pro-member-detail')">
+          <div class="wf-avatar" style="background:var(--gold);color:white">지</div>
+          <div class="wf-list-info">
+            <div class="name">지영</div>
+            <div class="meta">핸디캡 24 · 레슨 12회 · 최근 3/8</div>
+          </div>
+          <span class="wf-tag tier-mid">↑8%</span>
+        </div>
+        <div class="wf-list-item">
+          <div class="wf-avatar" style="background:var(--blue);color:white">현</div>
+          <div class="wf-list-info">
+            <div class="name">현우</div>
+            <div class="meta">핸디캡 30 · 레슨 6회 · 최근 3/5</div>
+          </div>
+          <span class="wf-tag tier-low">→0%</span>
+        </div>
+        <div class="wf-list-item">
+          <div class="wf-avatar" style="background:var(--orange);color:white">서</div>
+          <div class="wf-list-info">
+            <div class="name">서연</div>
+            <div class="meta">핸디캡 22 · 레슨 18회 · 최근 3/7</div>
+          </div>
+          <span class="wf-tag tier-high">↑20%</span>
+        </div>
+        <div class="wf-list-item">
+          <div class="wf-avatar" style="background:var(--coral);color:white">태</div>
+          <div class="wf-list-info">
+            <div class="name">태호</div>
+            <div class="meta">핸디캡 28 · 레슨 3회 · 최근 2/28</div>
+          </div>
+          <span class="wf-badge" class="u-tag-coral">비활성</span>
+        </div>
+
+        <div class="u-mt-16">
+          <button class="wf-btn wf-btn-primary" onclick="navTo('pro-invite')">+ 회원 초대</button>
+        </div>
+      </div>
+    `
+  },
+
+  'pro-reports': {
+    label: '리포트',
+    render: () => `
+      <div class="screen-header">
+        <h1>리포트</h1>
+        <p>음성 메모에서 자동 생성된 리포트</p>
+      </div>
+      <div class="screen-content">
+        <div style="display:flex;gap:8px;margin-bottom:12px">
+          <span class="wf-tag" style="background:var(--card);color:var(--muted);cursor:pointer;border:1px solid var(--border)">전체</span>
+          <span class="wf-tag" style="background:var(--coral);color:white;cursor:pointer">미전달 5</span>
+          <span class="wf-tag" style="background:var(--card);color:var(--muted);cursor:pointer;border:1px solid var(--border)">전달완료</span>
+        </div>
+
+        <div class="wf-card wf-card-coral" onclick="navTo('pro-report-edit')">
+          <div class="u-flex-between">
+            <div>
+              <div class="wf-card-title">민수 — 드라이버 교정</div>
+              <div class="wf-card-sub">오늘 14:55 · AI 초안 생성됨</div>
+            </div>
+            <div class="wf-badge" class="u-tag-coral">미전달</div>
+          </div>
+          <div style="margin-top:8px;font-size:12px;color:var(--muted)">
+            "그립을 너무 강하게 잡고 있어서 임팩트 시 클럽 페이스가 닫히는 현상..."
+          </div>
+          <div class="u-mt-8">
+            <span class="wf-tag" class="u-tag-blue">P4:PREPROCESSED</span>
+          </div>
+        </div>
+
+        <div class="wf-card wf-card-coral">
+          <div class="u-flex-between">
+            <div>
+              <div class="wf-card-title">지영 — 아이언 임팩트</div>
+              <div class="wf-card-sub">3/8 16:20 · AI 초안 생성됨</div>
+            </div>
+            <div class="wf-badge" class="u-tag-coral">미전달</div>
+          </div>
+        </div>
+
+        <div class="wf-card wf-card-accent">
+          <div class="u-flex-between">
+            <div>
+              <div class="wf-card-title">민수 — 어드레스 자세</div>
+              <div class="wf-card-sub">3/7 15:10 · 전달 완료</div>
+            </div>
+            <div class="wf-badge" class="u-tag-green">전달됨</div>
+          </div>
+          <div class="u-mt-8">
+            <span class="wf-tag" class="u-tag-green">P4:DELIVERED</span>
+            <span class="wf-tag tier-high">T1 High</span>
+          </div>
+        </div>
+
+        <div class="wf-card wf-card-accent">
+          <div class="u-flex-between">
+            <div>
+              <div class="wf-card-title">서연 — 퍼팅 루틴</div>
+              <div class="wf-card-sub">3/7 11:30 · 전달 완료</div>
+            </div>
+            <div class="wf-badge" class="u-tag-green">전달됨</div>
+          </div>
+        </div>
+
+        <div class="wf-section" style="margin-top:24px">💰 세일즈 모듈</div>
+        <div class="sales-module-box" onclick="navTo('pro-report-edit')">
+          <div style="font-size:14px;font-weight:700;color:var(--accent)">📎 결제/예약 유도 카드 추가</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:4px">리포트에 패키지 할인/재예약 CTA를 삽입하여 전환율을 높이세요</div>
+        </div>
+        <div class="wf-card" style="background:#ECFDF5;border:1px solid #A7F3D0">
+          <div class="wf-card-title" style="color:var(--accent)">🎁 8회 패키지 할인 카드</div>
+          <div class="wf-card-sub">리포트 하단에 자동 삽입 · 전환율 65%</div>
+          <div style="margin-top:8px;display:flex;gap:8px">
+            <span class="wf-tag tier-high">활성</span>
+            <span class="wf-tag" style="background:var(--card2);color:var(--muted)">이달 12건 전달</span>
+          </div>
+        </div>
+
+        <div class="wf-section" class="u-mt-16">음성 메모 큐</div>
+        <div class="wf-card" onclick="navTo('pro-voice-detail')">
+          <div style="display:flex;gap:12px;align-items:center">
+            <div style="width:40px;height:40px;border-radius:50%;background:rgba(241,196,15,.15);display:flex;align-items:center;justify-content:center">
+              <svg width="18" height="18" fill="var(--gold)" viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/></svg>
+            </div>
+            <div style="flex:1">
+              <div style="font-size:13px;font-weight:600">현우 회원 메모</div>
+              <div class="u-txt-xs">2분 15초 · 전사 대기 중</div>
+            </div>
+            <span class="wf-tag" class="u-tag-gold">UNBOUND</span>
+          </div>
+        </div>
+      </div>
+    `
+  },
+
+  'pro-settings': {
+    label: '설정',
+    render: () => `
+      <div class="screen-header">
+        <h1>설정</h1>
+      </div>
+      <div class="screen-content">
+        <div style="text-align:center;padding:16px 0">
+          <div class="wf-avatar" style="width:72px;height:72px;margin:0 auto;background:var(--gold);font-size:28px;color:white">김</div>
+          <div style="font-size:18px;font-weight:700;margin-top:10px">김프로</div>
+          <div style="font-size:13px;color:var(--muted)">${DATA.pro.org} · ${DATA.pro.exp}</div>
+        </div>
+
+        <div class="wf-section">구독 플랜</div>
+        <div class="wf-card wf-card-accent">
+          <div class="u-flex-between">
+            <div>
+              <div class="wf-card-title">Pro 플랜</div>
+              <div class="wf-card-sub">월 ${fmtWon(DATA.pro.sub.price)} · 다음 결제일 ${DATA.pro.sub.nextPay}</div>
+            </div>
+            ${StatusBadge("활성", "active")}
+          </div>
+          <div style="margin-top:8px;font-size:11px;color:var(--muted)">
+            AI 분석 무제한 · 음성 리포트 무제한 · 회원 50명까지
+          </div>
+        </div>
+
+        <div class="wf-section">레슨 설정</div>
+        ${MenuItem('레슨 시간 · 요금', '시간대 설정 / 요금 관리', "navTo('pro-lesson-settings')")}
+        ${MenuItem('정산 내역', '매출 · 수수료 · 정산 계좌', "navTo('pro-settlement')")}
+
+        <div class="wf-section">알림 설정</div>
+        <div class="wf-list-item">
+          <div class="wf-list-info"><div class="name">레슨 예약 알림</div></div>
+          ${ToggleSw(true)}
+        </div>
+        <div class="wf-list-item">
+          <div class="wf-list-info"><div class="name">음성 전사 완료 알림</div></div>
+          ${ToggleSw(true)}
+        </div>
+        <div class="wf-list-item">
+          <div class="wf-list-info"><div class="name">결제 완료 알림</div></div>
+          ${ToggleSw(false)}
+        </div>
+
+        <div class="wf-section">기타</div>
+        ${MenuItem('프로필 편집')}
+        ${MenuItem('도움말')}
+        <div class="u-mt-16">
+          <button class="wf-btn wf-btn-secondary" style="color:var(--coral);border-color:var(--coral)">로그아웃</button>
+        </div>
+      </div>
+    `
+  },
+
+  // ━━━━ PRO SUB-SCREENS ━━━━
+  'pro-member-detail': {
+    label: '회원 상세',
+    render: () => `
+      ${subHeader('회원 상세')}
+      <div class="screen-content u-screen-sub">
+        <div style="text-align:center;padding:12px 0">
+          <div class="wf-avatar" style="width:64px;height:64px;margin:0 auto;background:var(--accent);font-size:24px;color:white">민</div>
+          <div style="font-size:18px;font-weight:700;margin-top:8px">민수</div>
+          <div style="font-size:13px;color:var(--muted)">핸디캡 18 · 레슨 24회 · 등록 2025.12</div>
+          <span class="wf-tag tier-high" style="margin-top:6px;display:inline-block">성장률 ↑15%</span>
+        </div>
+        <div class="wf-section">스윙 점수 추이</div>
+        <div class="wf-chart-placeholder" style="height:120px"><span>📈 67→75→82 점수 변화</span></div>
+        <div class="wf-section">레슨 타임라인</div>
+        <div class="wf-timeline">
+          <div class="wf-tl-item" style="position:relative">
+            <div style="font-size:13px;font-weight:600">드라이버 어드레스 교정</div>
+            <div class="u-txt-xs">3/9 · 점수 82 · T1 High</div>
+          </div>
+          <div class="wf-tl-item">
+            <div style="font-size:13px;font-weight:600">아이언 임팩트 분석</div>
+            <div class="u-txt-xs">3/7 · 점수 75 · T2 Mid</div>
+          </div>
+          <div class="wf-tl-item">
+            <div style="font-size:13px;font-weight:600">그립 기초 레슨</div>
+            <div class="u-txt-xs">3/2 · 점수 67 · T1 High</div>
+          </div>
+        </div>
+        <div class="wf-section">리포트 이력</div>
+        <div class="wf-card" onclick="navTo('pro-report-edit')">
+          <div style="display:flex;justify-content:space-between">
+            <div><div class="wf-card-title">드라이버 교정</div><div class="wf-card-sub">3/9 · 미전달</div></div>
+            <div class="wf-badge" class="u-tag-coral">미전달</div>
+          </div>
+        </div>
+        <div class="wf-card">
+          <div style="display:flex;justify-content:space-between">
+            <div><div class="wf-card-title">아이언 임팩트</div><div class="wf-card-sub">3/7 · 전달 완료</div></div>
+            <div class="wf-badge" class="u-tag-green">전달됨</div>
+          </div>
+        </div>
+        <div class="wf-section">메모</div>
+        <div class="wf-card">
+          <textarea class="wf-input" style="min-height:60px;resize:vertical" placeholder="코칭 메모 입력...">그립 압력 과다. 연습 시 4/10 유지 필요. 체중 이동은 개선 중.</textarea>
+        </div>
+        <div class="wf-stat-row">
+          <div class="wf-stat" style="cursor:pointer" onclick="navTo('pro-report-edit')">
+            <div class="val" style="font-size:14px">📝</div><div class="label">리포트 작성</div>
+          </div>
+          <div class="wf-stat">
+            <div class="val" style="font-size:14px">📅</div><div class="label">다음 레슨</div>
+          </div>
+          <div class="wf-stat" style="background:rgba(241,196,15,.1)">
+            <div class="val" style="font-size:14px">⚡</div><div class="label">잔여 2회</div>
+          </div>
+        </div>
+      </div>`
+  },
+
+  'pro-report-edit': {
+    label: '리포트 편집',
+    render: () => `
+      ${subHeader('리포트 편집', '<button class="action-btn" style="background:var(--accent);color:white">전달하기</button>')}
+      <div class="screen-content u-screen-sub">
+        <div class="u-flex-between" style="margin-bottom:12px">
+          <div>
+            <div style="font-size:14px;font-weight:700">민수 — 드라이버 교정</div>
+            <div class="u-txt-sm">3/9 · AI 초안 생성됨</div>
+          </div>
+          <span class="wf-tag" class="u-tag-blue">P4:PREPROCESSED</span>
+        </div>
+        <div class="wf-section">블록 편집기</div>
+        <div class="wf-card" style="border-left:3px solid var(--accent)">
+          <div style="font-size:11px;color:var(--accent);margin-bottom:6px;font-weight:700">📊 스윙 요약</div>
+          <div contenteditable="true" class="u-content-editable">스윙 점수 82점(+7). 어드레스 자세 안정적. 임팩트 구간에서 그립 압력 과다로 페이스 닫힘 현상.</div>
+        </div>
+        <div class="wf-card" style="border-left:3px solid var(--gold)">
+          <div style="font-size:11px;color:var(--gold);margin-bottom:6px;font-weight:700">🔍 핵심 원인 분석</div>
+          <div contenteditable="true" class="u-content-editable">그립 압력(10점 중 7~8)이 과도하여 임팩트 시 손목 릴리스가 빨라지면서 클럽 페이스가 닫히는 패턴.</div>
+        </div>
+        <div class="wf-card" style="border-left:3px solid var(--blue)">
+          <div style="font-size:11px;color:var(--blue);margin-bottom:6px;font-weight:700">🎯 교정 포인트</div>
+          <div contenteditable="true" class="u-content-editable">1. 그립 압력을 4/10으로 유지<br>2. 백스윙 탑에서 왼손 V자 체크<br>3. 다운스윙 시 손목 유지</div>
+        </div>
+        <div class="wf-card" style="border-left:3px solid var(--orange)">
+          <div style="font-size:11px;color:var(--orange);margin-bottom:6px;font-weight:700">🏋 추천 드릴</div>
+          <div style="font-size:13px">그립 압력 감지 드릴 (3세트 × 10회)</div>
+        </div>
+        <div style="height:60px;background:var(--card);border-radius:8px;margin-bottom:12px;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--muted)">🎥 스윙 영상 첨부됨 (탭하여 재생)</div>
+
+        <!-- SHOULD-4: 리포트 프리뷰 (v4 흡수) -->
+        <div class="wf-section">AI 공개 범위 프리뷰</div>
+        <div class="wf-card" style="background:rgba(5,150,105,.04);border:1px solid rgba(5,150,105,.15)">
+          <div style="font-size:12px;font-weight:600;color:var(--accent);margin-bottom:8px">회원에게 보이는 AI 분석 항목</div>
+          <div style="font-size:12px;line-height:1.8;color:var(--text-main)">
+            ✅ 체중이동 — 데이터 포함<br/>
+            ✅ 그립 압력 — 데이터 포함<br/>
+            ✅ 임팩트 위치 — 데이터 포함<br/>
+            🔒 캐스팅 — 비공개 (프로만 열람)<br/>
+            🔒 오버스윙 — 비공개 (프로만 열람)
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;margin-top:10px;padding:8px;background:var(--card2);border-radius:6px">
+            <span style="font-size:12px">💬</span>
+            <span style="font-size:11px;color:var(--muted)">AI 톤: <strong style="color:var(--accent)">부드러운 제안</strong></span>
+            <span style="font-size:10px;color:var(--muted);margin-left:auto;cursor:pointer;text-decoration:underline" onclick="navTo('pro-lesson-settings')">설정 변경</span>
+          </div>
+          <div style="font-size:10px;color:var(--muted);margin-top:6px">[DC-1/DC-4] 레슨 설정에서 변경 가능</div>
+        </div>
+
+        <div class="wf-section">세일즈 모듈 (드래그하여 추가)</div>
+        <div class="wf-module">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:16px">📅</span>
+            <div>
+              <div style="font-size:13px;font-weight:700">모듈 A: 다음 레슨 예약</div>
+              <div class="u-txt-xs">원클릭 캘린더 연동 예약</div>
+            </div>
+          </div>
+        </div>
+        <div class="wf-module">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:16px">💳</span>
+            <div>
+              <div style="font-size:13px;font-weight:700">모듈 B: 패키지 연장 제안</div>
+              <div class="u-txt-xs">잔여 2회 · 8회 패키지 ₩480,000</div>
+            </div>
+          </div>
+        </div>
+        <div class="wf-module">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:16px">🏌</span>
+            <div>
+              <div style="font-size:13px;font-weight:700">모듈 C: 프라이빗 연습장 동반</div>
+              <div class="u-txt-xs">1:1 필드 레슨 예약</div>
+            </div>
+          </div>
+        </div>
+      </div>`
+  },
+
+  'pro-voice-detail': {
+    label: '영상 평가',
+    render: () => `
+      ${subHeader('영상 평가 · 음성 리뷰', '<button class="action-btn" style="background:var(--accent);color:white" onclick="navTo(&quot;pro-report-edit&quot;)">리포트 생성</button>')}
+      <div class="screen-content u-screen-sub">
+        <!-- MUST-4: 프로 영상평가 통합 화면 (v4 흡수) -->
+        <!-- 영상 프리뷰 영역 -->
+        <div class="wf-card" style="padding:0;overflow:hidden">
+          <div style="height:200px;background:#111827;display:flex;align-items:center;justify-content:center;position:relative">
+            <svg width="48" height="48" fill="rgba(255,255,255,.5)" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+            <div style="position:absolute;bottom:8px;left:8px;display:flex;gap:6px">
+              <span style="font-size:10px;background:rgba(0,0,0,.6);color:white;padding:2px 8px;border-radius:4px">민수 · 드라이버</span>
+              <span style="font-size:10px;background:rgba(5,150,105,.8);color:white;padding:2px 8px;border-radius:4px">74점</span>
+            </div>
+            <div style="position:absolute;bottom:8px;right:8px;font-size:10px;color:rgba(255,255,255,.7)">0:00 / 0:04</div>
+            <div style="position:absolute;top:8px;right:8px;font-size:10px;background:rgba(0,0,0,.6);color:var(--accent);padding:2px 8px;border-radius:4px">AI 관절 ${CONST.AI_JOINT_POINTS}pts</div>
+          </div>
+        </div>
+
+        <!-- AI 태그 토글 (min 52px 터치 영역) -->
+        <div class="wf-section">AI 분석 태그 (리포트 포함 여부)</div>
+        <div class="wf-card">
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="display:flex;align-items:center;justify-content:space-between;min-height:52px;padding:8px 12px;background:var(--card2);border-radius:8px">
+              <div>
+                <div style="font-size:13px;font-weight:600">체중이동 지연</div>
+                <div class="u-txt-xs">전환 0.3s 지연 · T2 신뢰도</div>
+              </div>
+              <div class="wf-toggle on" onclick="this.classList.toggle('on');this.classList.toggle('off')"></div>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;min-height:52px;padding:8px 12px;background:var(--card2);border-radius:8px">
+              <div>
+                <div style="font-size:13px;font-weight:600">그립 과압</div>
+                <div class="u-txt-xs">임팩트 7.2 → 권장 4.0 · T1 신뢰도</div>
+              </div>
+              <div class="wf-toggle on" onclick="this.classList.toggle('on');this.classList.toggle('off')"></div>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;min-height:52px;padding:8px 12px;background:var(--card2);border-radius:8px">
+              <div>
+                <div style="font-size:13px;font-weight:600">어드레스 안정</div>
+                <div style="font-size:11px;color:var(--accent)">양호 — 교정 불필요</div>
+              </div>
+              <div class="wf-toggle off" onclick="this.classList.toggle('on');this.classList.toggle('off')"></div>
+            </div>
+          </div>
+          <div style="font-size:10px;color:var(--muted);margin-top:8px">ON 항목만 리포트에 포함됩니다 · [DC-4: Single Primary Fix]</div>
+        </div>
+
+        <!-- 음성 메모 통합 (ready → recording → done) -->
+        <div class="wf-section">음성 메모</div>
+        <div id="voice-ready" class="wf-card" style="text-align:center;padding:20px;cursor:pointer;border:2px dashed var(--border)" onclick="document.getElementById('voice-ready').style.display='none';document.getElementById('voice-recording').style.display='block'">
+          <div style="font-size:28px;margin-bottom:8px">🎙️</div>
+          <div style="font-size:14px;font-weight:700">탭하여 음성 메모 녹음</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:4px">레슨 피드백을 말로 남겨주세요</div>
+        </div>
+        <div id="voice-recording" style="display:none">
+          <div class="wf-card" style="text-align:center;padding:20px;border:2px solid var(--coral);background:rgba(231,76,60,.04)">
+            <div style="width:64px;height:64px;border-radius:50%;background:rgba(231,76,60,.15);display:flex;align-items:center;justify-content:center;margin:0 auto">
+              <svg width="32" height="32" fill="var(--coral)" viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/></svg>
+            </div>
+            <div style="font-size:28px;font-weight:800;color:var(--coral);margin-top:12px">1:23</div>
+            <div style="font-size:12px;color:var(--coral);margin-top:4px">녹음 중...</div>
+            <div style="display:flex;gap:12px;justify-content:center;margin-top:16px">
+              <button class="wf-btn wf-btn-secondary" style="width:auto;padding:10px 20px" onclick="document.getElementById('voice-recording').style.display='none';document.getElementById('voice-ready').style.display='block'">취소</button>
+              <button class="wf-btn wf-btn-primary" style="width:auto;padding:10px 20px" onclick="document.getElementById('voice-recording').style.display='none';document.getElementById('voice-done').style.display='block'">완료</button>
+            </div>
+          </div>
+        </div>
+        <div id="voice-done" style="display:none">
+          <div class="wf-card" style="border:2px solid var(--accent)">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+              <div style="width:40px;height:40px;border-radius:50%;background:rgba(46,204,113,.15);display:flex;align-items:center;justify-content:center">
+                <svg width="20" height="20" fill="var(--accent)" viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/></svg>
+              </div>
+              <div style="flex:1">
+                <div style="font-size:13px;font-weight:700">녹음 완료</div>
+                <div class="u-txt-sm">3분 32초 · 민수 회원 자동 태그</div>
+              </div>
+              <span class="wf-tag tier-mid">전사 완료</span>
+            </div>
+            <div class="wf-audio">
+              <div class="wf-audio-btn">▶</div>
+              <div class="wf-audio-wave"></div>
+              <div style="font-size:11px;color:var(--muted);min-width:35px">3:32</div>
+            </div>
+            <div style="font-size:12px;color:var(--text-main);line-height:1.7;margin-top:10px;padding:10px;background:var(--card2);border-radius:8px">
+              "그립을 너무 강하게 잡고 있어서 임팩트 시 클럽 페이스가 닫힙니다. 압력 4 정도로 유지하는 연습 필요. 체중 이동은 많이 좋아졌고..."
+            </div>
+            <div style="font-size:10px;color:var(--muted);margin-top:6px">AI 전사 신뢰도: 96%</div>
+          </div>
+        </div>
+
+        <!-- Voice Object FSM -->
+        <div class="wf-section">Voice Object FSM</div>
+        <div class="wf-card">
+          <div style="display:flex;align-items:center;gap:4px;font-size:11px;flex-wrap:wrap">
+            <span class="wf-tag" style="background:var(--card2);color:var(--muted)">UNBOUND</span>
+            <span style="color:var(--muted)">→</span>
+            <span class="wf-tag" class="u-tag-blue">PREPROCESSED ✓</span>
+            <span style="color:var(--muted)">→</span>
+            <span class="wf-tag" style="background:var(--card2);color:var(--muted)">BOUND</span>
+            <span style="color:var(--muted)">→</span>
+            <span class="wf-tag" style="background:var(--card2);color:var(--muted)">DELIVERED</span>
+          </div>
+        </div>
+        <button class="wf-btn wf-btn-primary" onclick="navTo('pro-report-edit')">AI 리포트 초안 생성</button>
+        <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:6px">영상 + AI 태그(ON) + 음성 메모 → 자동 리포트 초안</div>
+      </div>`
+  },
+
+  'pro-voice-record': {
+    label: '음성 녹음',
+    render: () => `
+      ${subHeader('음성 메모 녹음')}
+      <div class="wf-recording">
+        <div style="font-size:14px;color:var(--muted);margin-bottom:24px">회원 레슨 후 음성 메모를 남겨주세요</div>
+        <div class="wf-rec-circle">
+          <svg width="48" height="48" fill="var(--coral)" viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/></svg>
+        </div>
+        <div style="font-size:32px;font-weight:800;color:var(--coral);margin-top:20px">1:23</div>
+        <div style="font-size:13px;color:var(--muted);margin-top:4px">녹음 중...</div>
+        <div style="display:flex;gap:16px;margin-top:32px">
+          <button class="wf-btn wf-btn-secondary" style="width:auto;padding:12px 24px" onclick="goBack()">취소</button>
+          <button class="wf-btn wf-btn-primary" style="width:auto;padding:12px 24px" onclick="navTo('pro-voice-detail')">완료</button>
+        </div>
+        <div class="wf-section" style="margin-top:32px;text-align:left;width:100%">회원 태그</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;width:100%">
+          <span class="wf-tag" style="background:var(--accent);color:white;cursor:pointer;padding:6px 12px">민수 ✓</span>
+          <span class="wf-tag" style="background:var(--card);color:var(--muted);cursor:pointer;border:1px solid var(--border);padding:6px 12px">지영</span>
+          <span class="wf-tag" style="background:var(--card);color:var(--muted);cursor:pointer;border:1px solid var(--border);padding:6px 12px">현우</span>
+          <span class="wf-tag" style="background:var(--card);color:var(--muted);cursor:pointer;border:1px solid var(--border);padding:6px 12px">서연</span>
+        </div>
+        <div style="margin-top:24px;font-size:11px;color:var(--muted);text-align:center">[P4: Voice Object FSM] 녹음 완료 시 자동 전사 → 리포트 초안 생성</div>
+      </div>`
+  },
+
+  'pro-invite': {
+    label: '회원 초대',
+    render: () => `
+      ${subHeader('회원 초대')}
+      <div class="screen-content u-screen-sub">
+        <div style="text-align:center;padding:20px 0">
+          <div style="font-size:48px">🔗</div>
+          <div style="font-size:16px;font-weight:700;margin-top:12px">초대 링크로 회원을 추가하세요</div>
+          <div style="font-size:13px;color:var(--muted);margin-top:4px">링크를 받은 회원은 자동으로 프로와 연결됩니다</div>
+        </div>
+        <div class="wf-section">초대 링크</div>
+        <div class="wf-card">
+          <div style="background:var(--card2);border-radius:8px;padding:12px;font-size:12px;color:var(--light);word-break:break-all;font-family:monospace">
+            https://hellonext.app/invite/KimPro_a8f3k2
+          </div>
+          <button class="wf-btn wf-btn-secondary" style="margin-top:10px;margin-bottom:0">링크 복사</button>
+        </div>
+        <div class="wf-section">공유하기</div>
+        <div class="wf-stat-row">
+          <div class="wf-stat" style="cursor:pointer;background:rgba(254,229,0,.1)">
+            <div style="font-size:24px">💬</div>
+            <div class="label" class="u-mt-4">카카오톡</div>
+          </div>
+          <div class="wf-stat" style="cursor:pointer">
+            <div style="font-size:24px">📱</div>
+            <div class="label" class="u-mt-4">SMS</div>
+          </div>
+          <div class="wf-stat" style="cursor:pointer">
+            <div style="font-size:24px">📧</div>
+            <div class="label" class="u-mt-4">이메일</div>
+          </div>
+        </div>
+        <div class="wf-section">직접 초대</div>
+        <input class="wf-input" placeholder="회원 이름 입력" />
+        <input class="wf-input" placeholder="전화번호 입력 (010-0000-0000)" />
+        <button class="wf-btn wf-btn-primary">초대 전송</button>
+        <div class="wf-section">초대 현황</div>
+        <div class="wf-list-item">
+          <div class="wf-list-info"><div class="name">010-1234-5678</div><div class="meta">3/8 전송 · 대기 중</div></div>
+          <span class="wf-badge" class="u-tag-gold">대기</span>
+        </div>
+        <div class="wf-list-item">
+          <div class="wf-list-info"><div class="name">010-9876-5432</div><div class="meta">3/5 전송 · 가입 완료</div></div>
+          <span class="wf-badge" class="u-tag-green">완료</span>
+        </div>
+      </div>`
+  },
+
+  'pro-lesson-settings': {
+    label: '레슨 설정',
+    render: () => `
+      ${subHeader('레슨 시간 · 요금')}
+      <div class="screen-content u-screen-sub">
+        <div class="wf-section">가용 시간대</div>
+        <div class="wf-card">
+          <div style="font-size:13px;font-weight:600;margin-bottom:10px">월요일 ~ 금요일</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px">
+            <span class="wf-tag" style="background:var(--accent);color:white;padding:6px 12px">09:00</span>
+            <span class="wf-tag" style="background:var(--accent);color:white;padding:6px 12px">10:00</span>
+            <span class="wf-tag" style="background:var(--card2);color:var(--muted);padding:6px 12px">11:00</span>
+            <span class="wf-tag" style="background:var(--accent);color:white;padding:6px 12px">14:00</span>
+            <span class="wf-tag" style="background:var(--accent);color:white;padding:6px 12px">15:00</span>
+            <span class="wf-tag" style="background:var(--accent);color:white;padding:6px 12px">16:00</span>
+            <span class="wf-tag" style="background:var(--accent);color:white;padding:6px 12px">17:00</span>
+          </div>
+          <div style="font-size:11px;color:var(--muted);margin-top:8px">활성 시간대를 탭하여 변경</div>
+        </div>
+        <div class="wf-card">
+          <div style="font-size:13px;font-weight:600;margin-bottom:10px">토요일</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px">
+            <span class="wf-tag" style="background:var(--accent);color:white;padding:6px 12px">09:00</span>
+            <span class="wf-tag" style="background:var(--accent);color:white;padding:6px 12px">10:00</span>
+            <span class="wf-tag" style="background:var(--accent);color:white;padding:6px 12px">11:00</span>
+          </div>
+        </div>
+        <div class="wf-section">레슨 요금</div>
+        <div class="wf-card">
+          <div class="u-flex-between" style="margin-bottom:10px">
+            <div style="font-size:14px;font-weight:600">1회 레슨 (60분)</div>
+            <div style="font-size:16px;font-weight:800;color:var(--accent)">₩70,000</div>
+          </div>
+          <div class="u-flex-between" style="margin-bottom:10px">
+            <div style="font-size:14px;font-weight:600">4회 패키지</div>
+            <div><span style="font-size:14px;text-decoration:line-through;color:var(--muted)">₩280,000</span> <span style="font-size:16px;font-weight:800;color:var(--gold)">₩260,000</span></div>
+          </div>
+          <div class="u-flex-between" style="margin-bottom:10px">
+            <div style="font-size:14px;font-weight:600">8회 패키지</div>
+            <div><span style="font-size:14px;text-decoration:line-through;color:var(--muted)">₩560,000</span> <span style="font-size:16px;font-weight:800;color:var(--accent)">₩480,000</span></div>
+          </div>
+          <div class="u-flex-between">
+            <div style="font-size:14px;font-weight:600">필드 레슨 (3시간)</div>
+            <div style="font-size:16px;font-weight:800;color:var(--blue)">₩250,000</div>
+          </div>
+        </div>
+        <!-- MUST-2: AI 피드백 범위 설정 (v4 흡수, DC-1/DC-4 준수) -->
+        <div class="wf-section">AI 피드백 범위 설정</div>
+        <div class="wf-card" style="border:2px solid var(--accent)">
+          <div style="font-size:14px;font-weight:700;margin-bottom:4px">회원에게 보이는 AI 분석 항목</div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:14px">[DC-1: 3-Layer] 프로가 허용한 항목만 회원 앱에 표시됩니다</div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <label style="display:flex;align-items:center;gap:10px;min-height:44px;padding:8px 12px;background:var(--card2);border-radius:8px;cursor:pointer">
+              <input type="checkbox" checked style="width:20px;height:20px;accent-color:var(--accent)" />
+              <div><div style="font-size:13px;font-weight:600">체중이동</div><div class="u-txt-xs">뒤꿈치→앞발 전환 타이밍</div></div>
+            </label>
+            <label style="display:flex;align-items:center;gap:10px;min-height:44px;padding:8px 12px;background:var(--card2);border-radius:8px;cursor:pointer">
+              <input type="checkbox" checked style="width:20px;height:20px;accent-color:var(--accent)" />
+              <div><div style="font-size:13px;font-weight:600">그립 압력</div><div class="u-txt-xs">임팩트 시 압력 수치</div></div>
+            </label>
+            <label style="display:flex;align-items:center;gap:10px;min-height:44px;padding:8px 12px;background:var(--card2);border-radius:8px;cursor:pointer;opacity:.55">
+              <input type="checkbox" style="width:20px;height:20px" />
+              <div><div style="font-size:13px;font-weight:600">캐스팅 각도</div><div class="u-txt-xs">다운스윙 초기 손목 릴리즈</div></div>
+            </label>
+            <label style="display:flex;align-items:center;gap:10px;min-height:44px;padding:8px 12px;background:var(--card2);border-radius:8px;cursor:pointer;opacity:.55">
+              <input type="checkbox" style="width:20px;height:20px" />
+              <div><div style="font-size:13px;font-weight:600">오버스윙</div><div class="u-txt-xs">백스윙 톱 과도 회전</div></div>
+            </label>
+            <label style="display:flex;align-items:center;gap:10px;min-height:44px;padding:8px 12px;background:var(--card2);border-radius:8px;cursor:pointer">
+              <input type="checkbox" checked style="width:20px;height:20px;accent-color:var(--accent)" />
+              <div><div style="font-size:13px;font-weight:600">임팩트 위치</div><div class="u-txt-xs">클럽 페이스 중심 정확도</div></div>
+            </label>
+          </div>
+        </div>
+        <div class="wf-card" class="u-mt-12">
+          <div style="font-size:14px;font-weight:700;margin-bottom:4px">AI 코멘트 톤</div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:14px">[DC-4: Single Primary Fix] AI가 회원에게 전달하는 피드백 방식</div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <label style="display:flex;align-items:center;gap:10px;min-height:44px;padding:10px 12px;background:var(--card2);border-radius:8px;cursor:pointer;border:1px solid var(--border)">
+              <input type="radio" name="ai-tone" style="width:18px;height:18px" />
+              <div><div style="font-size:13px;font-weight:600">관찰만</div><div class="u-txt-xs">수치 데이터만 표시, 조언 없음</div></div>
+            </label>
+            <label style="display:flex;align-items:center;gap:10px;min-height:44px;padding:10px 12px;background:rgba(5,150,105,.06);border-radius:8px;cursor:pointer;border:2px solid var(--accent)">
+              <input type="radio" name="ai-tone" checked style="width:18px;height:18px;accent-color:var(--accent)" />
+              <div><div style="font-size:13px;font-weight:600;color:var(--accent)">부드러운 제안</div><div class="u-txt-xs">"체중이동이 약간 늦는 것 같아요" 식 권유</div></div>
+            </label>
+            <label style="display:flex;align-items:center;gap:10px;min-height:44px;padding:10px 12px;background:var(--card2);border-radius:8px;cursor:pointer;border:1px solid var(--border)">
+              <input type="radio" name="ai-tone" style="width:18px;height:18px" />
+              <div><div style="font-size:13px;font-weight:600">구체적 가이드</div><div class="u-txt-xs">"체중을 앞발로 0.2초 빠르게 옮기세요" 식 지시</div></div>
+            </label>
+          </div>
+        </div>
+
+        <div class="wf-section">자동 예약 관리</div>
+        <div class="wf-list-item">
+          <div class="wf-list-info"><div class="name">자동 예약 확인</div><div class="meta">신규 예약 자동 승인</div></div>
+          <div class="wf-toggle off" onclick="this.classList.toggle('on');this.classList.toggle('off')"></div>
+        </div>
+        <div class="wf-list-item">
+          <div class="wf-list-info"><div class="name">24시간 전 취소 허용</div><div class="meta">무료 취소 가능 시간</div></div>
+          <div class="wf-toggle on" onclick="this.classList.toggle('on');this.classList.toggle('off')"></div>
+        </div>
+        <button class="wf-btn wf-btn-primary" class="u-mt-12">설정 저장</button>
+      </div>`
+  },
+
+  'pro-settlement': {
+    label: '정산 내역',
+    render: () => `
+      ${subHeader('정산 내역')}
+      <div class="screen-content u-screen-sub">
+        <div class="wf-card" style="text-align:center;padding:20px">
+          <div style="font-size:13px;color:var(--muted)">3월 예상 정산금</div>
+          <div style="font-size:32px;font-weight:800;color:var(--accent);margin-top:4px">${fmtWon(DATA.settlement.net)}</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:4px">매출 ${fmtWon(DATA.settlement.gross)} - 수수료 ${fmtWon(DATA.settlement.fee)} (${CONST.FEE_TOTAL}%)</div>
+        </div>
+        <div class="wf-stat-row">
+          <div class="wf-stat"><div class="val" style="font-size:16px">18건</div><div class="label">완료 레슨</div></div>
+          <div class="wf-stat"><div class="val" style="font-size:16px;color:var(--gold)">5건</div><div class="label">패키지 판매</div></div>
+          <div class="wf-stat"><div class="val" style="font-size:16px;color:var(--blue)">32명</div><div class="label">활성 회원</div></div>
+        </div>
+        <div class="wf-section">월별 정산</div>
+        <div class="wf-card">
+          <div class="u-flex-between">
+            <div><div class="wf-card-title">3월 (진행 중)</div><div class="wf-card-sub">정산일: 4/5</div></div>
+            <div style="font-weight:700;color:var(--accent)">₩2,160,000</div>
+          </div>
+        </div>
+        <div class="wf-card">
+          <div class="u-flex-between">
+            <div><div class="wf-card-title">2월</div><div class="wf-card-sub">정산 완료 · 3/5</div></div>
+            <div style="font-weight:700">₩1,890,000</div>
+          </div>
+        </div>
+        <div class="wf-card">
+          <div class="u-flex-between">
+            <div><div class="wf-card-title">1월</div><div class="wf-card-sub">정산 완료 · 2/5</div></div>
+            <div style="font-weight:700">₩1,620,000</div>
+          </div>
+        </div>
+        <div class="wf-section">수수료 상세</div>
+        <div class="wf-card">
+          <div style="font-size:13px;line-height:2">
+            <div style="display:flex;justify-content:space-between">
+              <span>플랫폼 수수료</span><span>${CONST.FEE_PLATFORM}%</span>
+            </div>
+            <div style="display:flex;justify-content:space-between">
+              <span>PG (Toss Payments)</span><span>${CONST.FEE_PG}%</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-weight:700;border-top:1px solid var(--border);padding-top:8px;margin-top:4px">
+              <span>합계</span><span>${CONST.FEE_TOTAL}%</span>
+            </div>
+          </div>
+        </div>
+        <div class="wf-section">정산 계좌</div>
+        <div class="wf-card">
+          <div class="u-flex-between">
+            <div><div class="wf-card-title">신한은행</div><div class="wf-card-sub">110-***-***456 · 김프로</div></div>
+            <span style="font-size:12px;color:var(--accent);cursor:pointer">변경</span>
+          </div>
+        </div>
+      </div>`
+  },
+
+  // ━━━━ 개선안 6: Lesson Briefing (프로 전용) ━━━━
+  'pro-lesson-briefing': {
+    label: '레슨 브리핑',
+    render: () => `
+      ${subHeader('레슨 브리핑', '<span style="font-size:11px;color:var(--accent);font-weight:600">30분 전 알림</span>')}
+      <div class="screen-content u-screen-sub">
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">
+          <div class="wf-avatar" style="width:56px;height:56px;background:var(--accent);color:white;font-size:22px">민</div>
+          <div>
+            <div style="font-size:18px;font-weight:800">${M("minsu").name} 회원</div>
+            <div style="font-size:12px;color:var(--muted)">핸디캡 ${M("minsu").handicap} · 레슨 ${M("minsu").lessonCount}회차 · 연결 3개월</div>
+          </div>
+        </div>
+
+        <div class="wf-section">최근 스윙 데이터</div>
+        <div class="wf-stat-row">
+          <div class="wf-stat">
+            <div class="val" style="color:var(--accent)">${M("minsu").swing.latest}</div>
+            <div class="label">현재 점수</div>
+          </div>
+          <div class="wf-stat">
+            <div class="val" style="color:var(--gold)">${M("minsu").swing.feelAccuracy}%</div>
+            <div class="label">Feel 정확도</div>
+          </div>
+          <div class="wf-stat">
+            <div class="val" style="color:var(--blue)">12회</div>
+            <div class="label">주간 연습</div>
+          </div>
+        </div>
+
+        <div class="wf-section">AI 플래그 요약</div>
+        <div class="wf-card" style="border-left:4px solid var(--coral)">
+          <div style="font-size:13px;font-weight:700;color:var(--coral);margin-bottom:4px">🚨 체중이동 ${M("minsu").measurements.weight.plateauWeeks}주 정체</div>
+          <div style="font-size:12px;color:var(--muted);line-height:1.5">${M("minsu").measurements.weight.range} 구간 반복 · 기존 드릴 효과 감소 추정</div>
+        </div>
+        <div class="wf-card" style="border-left:4px solid var(--gold)">
+          <div style="font-size:13px;font-weight:700;color:var(--gold);margin-bottom:4px">⚠️ 그립 압력 과다</div>
+          <div style="font-size:12px;color:var(--muted);line-height:1.5">임팩트 시 ${M("minsu").measurements.grip.value} (권장 ${M("minsu").measurements.grip.recommended}) · 비거리 15m 손실 원인</div>
+        </div>
+
+        <div class="wf-section">지난 레슨 포커스 결과</div>
+        <div class="wf-card">
+          <div style="font-size:13px;line-height:1.7">
+            <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+              <span style="font-weight:600">그립 압력 감지</span>
+              <span style="color:var(--gold);font-weight:700">진행 중 (4/10)</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+              <span style="font-weight:600">체중 이동 패턴</span>
+              <span style="color:var(--coral);font-weight:700">정체</span>
+            </div>
+            <div style="display:flex;justify-content:space-between">
+              <span style="font-weight:600">어드레스 자세</span>
+              <span style="color:var(--accent);font-weight:700">개선됨 ✓</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="wf-section">AI 추천 오늘 포커스</div>
+        <div class="wf-card wf-card-accent" style="background:rgba(5,150,105,.04)">
+          <div style="font-size:14px;font-weight:700;color:var(--accent);margin-bottom:4px">그립 압력 → 체중 이동 연결 훈련</div>
+          <div style="font-size:12px;color:var(--muted);line-height:1.5">그립 압력을 낮추면서 체중 이동 타이밍 잡기. 하프스윙 집중으로 정체 돌파를 시도해보세요.</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:8px">[DC-5] T2 이상 데이터 기반 추천</div>
+        </div>
+
+        <button class="wf-btn wf-btn-primary" onclick="navTo('pro-member-detail')">회원 상세 보기</button>
+        <button class="wf-btn wf-btn-secondary" onclick="goBack()">대시보드로 돌아가기</button>
+      </div>`
+  },
+
+  // ━━━━ ONBOARDING & SYSTEM SCREENS ━━━━
+  'onboarding-login': {
+    label: '로그인',
+    render: () => `
+      <div class="ob-center">
+        <div style="font-size:28px;font-weight:800;color:var(--accent);letter-spacing:2px;margin-bottom:32px">HelloNext</div>
+        <div style="font-size:14px;color:var(--muted);margin-bottom:40px">AI 골프 코칭의 새로운 기준</div>
+        <div style="width:100%;max-width:280px">
+          <button class="wf-btn" style="background:#FEE500;color:#191919;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px" onclick="navTo('onboarding-connect')">
+            💬 카카오로 3초 만에 시작하기
+          </button>
+          <button class="wf-btn wf-btn-secondary" class="u-mt-4">Apple로 로그인</button>
+          <div style="font-size:11px;color:var(--muted);margin-top:16px;line-height:1.6">
+            로그인 시 <span style="text-decoration:underline">서비스 이용약관</span> 및 <span style="text-decoration:underline">개인정보 처리방침</span>에 동의합니다.
+          </div>
+        </div>
+      </div>`
+  },
+
+  'onboarding-connect': {
+    label: '프로 연결',
+    render: () => `
+      <div class="ob-center" style="position:relative;overflow:hidden">
+        <div style="position:absolute;top:20px;left:30px" class="confetti">🎉</div>
+        <div style="position:absolute;top:40px;right:40px" class="confetti" style="animation-delay:.3s">⛳</div>
+        <div style="position:absolute;top:60px;left:60%" class="confetti" style="animation-delay:.5s">🏌</div>
+        <div class="ob-icon" style="background:rgba(46,204,113,.15)">
+          <span style="font-size:36px">🤝</span>
+        </div>
+        <div class="ob-title">김프로 코치님과<br>연결되었습니다!</div>
+        <div class="ob-desc">초대 링크를 통해 자동으로 매칭되었습니다.<br>이제 AI 기반 맞춤 코칭을 시작할 수 있어요.</div>
+        <div style="background:var(--card);border-radius:var(--radius);padding:16px;width:100%;margin-bottom:20px">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div class="wf-avatar" style="background:var(--gold);color:white;width:48px;height:48px;font-size:18px;min-width:48px">김</div>
+            <div style="text-align:left">
+              <div style="font-size:15px;font-weight:700">김프로 코치</div>
+              <div style="font-size:12px;color:var(--muted)">${DATA.pro.org} · ${DATA.pro.exp}</div>
+            </div>
+          </div>
+        </div>
+        <button class="wf-btn wf-btn-primary" style="width:100%" onclick="navTo('onboarding-empty')">시작하기</button>
+      </div>`
+  },
+
+  'onboarding-empty': {
+    label: '홈',
+    render: () => `
+      <div class="screen-header">
+        <h1>안녕하세요! 👋</h1>
+        <p>첫 스윙을 촬영해볼까요?</p>
+      </div>
+      <div class="screen-content">
+        <div class="wf-card" style="text-align:center;padding:32px 16px;background:linear-gradient(135deg,rgba(46,204,113,.05),rgba(46,204,113,.15));border:1px dashed var(--accent)">
+          <div style="font-size:48px;margin-bottom:12px">📹</div>
+          <div style="font-size:16px;font-weight:700;margin-bottom:8px">아직 분석된 스윙이 없네요</div>
+          <div style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:16px">김프로 코치님이 볼 수 있도록<br>첫 스윙을 촬영해 볼까요?</div>
+          <button class="wf-btn wf-btn-primary" style="margin-bottom:0" onclick="navTo('member-camera')">첫 스윙 촬영하기</button>
+        </div>
+        <div class="wf-section" style="margin-top:20px">시작 가이드</div>
+        <div class="wf-card" style="display:flex;gap:12px;align-items:center">
+          <div style="width:36px;height:36px;border-radius:50%;background:rgba(46,204,113,.15);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px;color:var(--accent);font-weight:800">1</div>
+          <div>
+            <div class="wf-card-title">스윙 촬영</div>
+            <div class="wf-card-sub">AI가 ${CONST.AI_JOINT_POINTS}개 관절을 추적하여 자세를 분석합니다</div>
+          </div>
+        </div>
+        <div class="wf-card" style="display:flex;gap:12px;align-items:center">
+          <div style="width:36px;height:36px;border-radius:50%;background:rgba(241,196,15,.15);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px;color:var(--gold);font-weight:800">2</div>
+          <div>
+            <div class="wf-card-title">AI 분석 리포트</div>
+            <div class="wf-card-sub">스윙 점수, 개선점, 맞춤 드릴을 받아보세요</div>
+          </div>
+        </div>
+        <div class="wf-card" style="display:flex;gap:12px;align-items:center">
+          <div style="width:36px;height:36px;border-radius:50%;background:rgba(52,152,219,.15);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px;color:var(--blue);font-weight:800">3</div>
+          <div>
+            <div class="wf-card-title">프로 코칭</div>
+            <div class="wf-card-sub">김프로 코치님의 맞춤 피드백을 확인하세요</div>
+          </div>
+        </div>
+        <div class="u-mt-16">
+          <button class="wf-btn wf-btn-secondary" onclick="switchRole('member');navTo('member-home')">기존 회원 홈으로 이동</button>
+        </div>
+      </div>`
+  },
+
+  'sync-conflict': {
+    label: '동기화 충돌',
+    render: () => `
+      ${subHeader('동기화 충돌')}
+      <div class="screen-content u-screen-sub">
+        <div class="wf-card" style="border:1px solid var(--gold);background:rgba(241,196,15,.05)">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+            <span style="font-size:18px">⚠️</span>
+            <div style="font-size:14px;font-weight:700;color:var(--gold)">충돌 발생</div>
+          </div>
+          <div style="font-size:13px;color:var(--muted);line-height:1.6">
+            오프라인에서 수정한 리포트가 서버 버전과 다릅니다. 어떤 버전을 유지할지 선택해주세요.
+          </div>
+        </div>
+        <div class="wf-section">리포트: 민수 — 드라이버 교정</div>
+        <div class="wf-card">
+          <div style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:8px">📱 현재 기기 (오프라인 수정)</div>
+          <div class="diff-add">그립 압력을 <strong>4/10</strong>으로 유지하는 연습 필요</div>
+          <div class="diff-add">체중 이동 패턴 <strong>개선 중</strong> — 다음 레슨 하프스윙 집중</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:6px">수정: 3/11 14:23 (이 기기)</div>
+        </div>
+        <div class="wf-card">
+          <div style="font-size:12px;font-weight:700;color:var(--blue);margin-bottom:8px">☁️ 서버 버전 (다른 기기에서 수정)</div>
+          <div class="diff-del">그립 압력을 <strong>5/10</strong>으로 유지하는 연습 필요</div>
+          <div class="diff-add" style="border-left-color:var(--blue)">백스윙 탑 체크포인트 추가</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:6px">수정: 3/11 14:18 (태블릿)</div>
+        </div>
+        <div class="u-mt-16">
+          <button class="wf-btn wf-btn-primary" onclick="goBack()">📱 현재 기기 버전 유지</button>
+          <button class="wf-btn wf-btn-secondary" onclick="goBack()">☁️ 서버 버전으로 덮어쓰기</button>
+          <div style="text-align:center;margin-top:8px">
+            <span style="font-size:12px;color:var(--muted);cursor:pointer;text-decoration:underline" onclick="goBack()">나중에 결정하기</span>
+          </div>
+        </div>
+      </div>`
+  },
+};
+
+// ── Navigation ──
+const mainScreens = ['member-home','member-practice','member-progress','member-profile','pro-dashboard','pro-members','pro-reports','pro-settings'];
+
+function navTo(screen) {
+  if(!screens[screen]) { console.warn("[navTo] Missing screen:", screen); return; }
+  // M-02: Hash-based routing
+  if (window.location.hash !== '#' + screen) {
+    window.location.hash = screen;
+    return; // hashchange handler will call renderScreen
+  }
+  renderScreen(screen);
+}
+
+function renderScreen(screen) {
+  try {
+    if(currentScreen && currentScreen !== screen) {
+      navHistory.push(currentScreen);
+    }
+    currentScreen = screen;
+    var content = screens[screen].render();
+    document.getElementById('phone-screen').innerHTML = content;
+    document.getElementById('screen-label').textContent = screens[screen].label;
+
+    var tabBarId = currentRole === 'member' ? 'tabs-member' : 'tabs-pro';
+    document.querySelectorAll('#' + tabBarId + ' .tab-item').forEach(function(t) {
+      var isMain = t.dataset.tab === screen;
+      t.classList.toggle('active', isMain);
+    });
+    document.getElementById('phone-screen').scrollTop = 0;
+  } catch(e) {
+    console.error('[renderScreen] Error rendering "' + screen + '":', e);
+    document.getElementById('phone-screen').innerHTML =
+      '<div style="padding:40px 20px;text-align:center">' +
+      '<div style="font-size:48px;margin-bottom:16px">⚠️</div>' +
+      '<div style="font-size:16px;font-weight:700;margin-bottom:8px">화면 렌더링 오류</div>' +
+      '<div style="font-size:13px;color:var(--muted);margin-bottom:16px">' + screen + ': ' + e.message + '</div>' +
+      '<button class="wf-btn wf-btn-primary" style="max-width:200px;margin:0 auto" onclick="navTo(\'' + (currentRole === 'member' ? 'member-home' : 'pro-dashboard') + '\')">홈으로 돌아가기</button>' +
+      '</div>';
+  }
+}
+
+function goBack() {
+  if(navHistory.length > 0) {
+    var prev = navHistory.pop();
+    currentScreen = prev;
+    try {
+      document.getElementById('phone-screen').innerHTML = screens[prev].render();
+      document.getElementById('screen-label').textContent = screens[prev].label;
+      document.getElementById('phone-screen').scrollTop = 0;
+      window.location.hash = prev;
+    } catch(e) {
+      console.error('[goBack] Error:', e);
+    }
+  }
+}
+
+function switchRole(role) {
+  try {
+    currentRole = role;
+    navHistory = [];
+    document.getElementById('btn-member').classList.toggle('active', role === 'member');
+    document.getElementById('btn-pro').classList.toggle('active', role === 'pro');
+    document.getElementById('tabs-member').style.display = role === 'member' ? 'flex' : 'none';
+    document.getElementById('tabs-pro').style.display = role === 'pro' ? 'flex' : 'none';
+    document.getElementById('voice-fab').style.display = role === 'pro' ? 'flex' : 'none';
+    var defaultScreen = role === 'member' ? 'member-home' : 'pro-dashboard';
+    navTo(defaultScreen);
+  } catch(e) { console.error('[switchRole]', e); }
+}
+
+function toggleFlow() {
+  document.getElementById('flow-overlay').classList.toggle('show');
+}
+
+function toggleOffline() {
+  try {
+    isOffline = !isOffline;
+    document.getElementById('offline-badge').classList.toggle('show', isOffline);
+    if(screens[currentScreen]) {
+      document.getElementById('phone-screen').innerHTML = screens[currentScreen].render();
+    }
+  } catch(e) { console.error('[toggleOffline]', e); }
+}
+
+// ── 개선안 2: Celebration Moment System ──
+function showCelebration(type) {
+  try {
+  var phoneScreen = document.getElementById('phone-screen');
+  const overlay = document.createElement('div');
+  overlay.className = 'celebration-overlay';
+  const colors = CONST.CONFETTI_COLORS;
+  for(let i=0;i<CONST.CONFETTI_COUNT;i++){
+    const p = document.createElement('div');
+    p.className='confetti-piece';
+    p.style.cssText = 'left:'+Math.random()*100+'%;top:-10px;background:'+colors[i%colors.length]+';animation-delay:'+Math.random()*0.6+'s;animation-duration:'+(1.2+Math.random()*0.8)+'s;width:'+(6+Math.random()*8)+'px;height:'+(6+Math.random()*8)+'px;border-radius:'+(Math.random()>.5?'50%':'2px');
+    overlay.appendChild(p);
+  }
+  const m = DATA.celebrations[type] || DATA.celebrations['high-score'];
+  const msg = document.createElement('div');
+  msg.className='celebration-msg';
+  msg.innerHTML = '<div class="celeb-badge-icon" style="background:'+m.bg+'">'+m.icon+'</div><div style="font-size:18px;font-weight:800;margin-bottom:4px">'+m.title+'</div><div style="font-size:13px;color:var(--muted)">'+m.sub+'</div><button class="celeb-close" onclick="this.closest(\'.celebration-overlay\').remove()">확인</button>';
+  overlay.appendChild(msg);
+  phoneScreen.style.position='relative';
+  phoneScreen.appendChild(overlay);
+  setTimeout(function(){if(overlay.parentNode)overlay.remove()},CONST.CELEBRATION_TIMEOUT);
+  } catch(e) { console.error('[showCelebration]', e); }
+}
+
+// ── Hash Router Listener (M-02) ──
+window.addEventListener('hashchange', function() {
+  var screen = window.location.hash.slice(1);
+  if (screen && screens[screen]) {
+    renderScreen(screen);
+  }
+});
+
+// ── Init ──
+(function() {
+  var initial = window.location.hash.slice(1);
+  if (initial && screens[initial]) {
+    renderScreen(initial);
+  } else {
+    navTo('member-home');
+  }
+})();
+</script>
+
+</body>
+</html>

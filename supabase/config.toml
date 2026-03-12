@@ -1,0 +1,36 @@
+[project]
+id = "hellonext"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 15
+
+[studio]
+enabled = true
+port = 54323
+api_url = "http://localhost"
+
+[auth]
+enabled = true
+site_url = "http://localhost:3000"
+additional_redirect_urls = ["https://localhost:3000"]
+jwt_expiry = 3600
+enable_signup = true
+enable_anonymous_sign_ins = false
+
+[auth.external.kakao]
+enabled = true
+client_id = "env(KAKAO_REST_API_KEY)"
+secret = "env(KAKAO_SECRET)"
+redirect_uri = "http://localhost:54321/auth/v1/callback"
+
+[realtime]
+enabled = true

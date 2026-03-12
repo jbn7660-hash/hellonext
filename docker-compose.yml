@@ -1,0 +1,274 @@
+# ============================
+# ArcUp/HelloNext Golf Coaching Platform
+# Docker Compose - Local Development Environment
+# Phase 8 Enhanced Development Setup
+# Features: Service dependencies, resource limits, log rotation, network isolation
+# ============================
+
+version: '3.9'
+
+# Load environment variables from .env file
+env_file:
+  - .env
+
+services:
+  # ============================
+  # Next.js Web Application
+  # Development server with hot reload
+  # ============================
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: builder
+    container_name: arcup-web-dev
+    ports:
+      - "3000:3000"
+    environment:
+      # Supabase Configuration
+      NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+
+      # Sentry Configuration
+      NEXT_PUBLIC_SENTRY_DSN: ${NEXT_PUBLIC_SENTRY_DSN}
+      SENTRY_AUTH_TOKEN: ${SENTRY_AUTH_TOKEN}
+
+      # External Services
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET}
+      TOSS_CLIENT_KEY: ${TOSS_CLIENT_KEY}
+      TOSS_SECRET_KEY: ${TOSS_SECRET_KEY}
+
+      # Patent Engine Configuration (v2.0)
+      CONFIDENCE_T1: ${CONFIDENCE_T1:-0.7}
+      CONFIDENCE_T2: ${CONFIDENCE_T2:-0.4}
+      CONFIDENCE_K: ${CONFIDENCE_K:-1.0}
+      CAUSAL_GRAPH_VERSION: ${CAUSAL_GRAPH_VERSION:-v1.0}
+      EDGE_CALIBRATION_BATCH_SIZE: ${EDGE_CALIBRATION_BATCH_SIZE:-10}
+      EDGE_CALIBRATION_INTERVAL_HOURS: ${EDGE_CALIBRATION_INTERVAL_HOURS:-1}
+
+      # Voice FSM Configuration (DC-5)
+      FSM_RECOVERY_TIMEOUT_SEC: ${FSM_RECOVERY_TIMEOUT_SEC:-30}
+      STT_MAX_RETRY: ${STT_MAX_RETRY:-3}
+
+      # Verification Queue Configuration (F-016)
+      VERIFICATION_DAILY_LIMIT_PER_PRO: ${VERIFICATION_DAILY_LIMIT_PER_PRO:-50}
+
+      # Development
+      NODE_ENV: development
+      NEXT_TELEMETRY_DISABLED: '1'
+
+    volumes:
+      # Hot reload support
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+
+    depends_on:
+      supabase-db:
+        condition: service_healthy
+      supabase-kong:
+        condition: service_healthy
+
+    # Resource limits for dev environment
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '1'
+          memory: 1G
+
+    # Log rotation configuration
+    logging:
+      driver: json-file
+      options:
+        max-size: '100m'
+        max-file: '5'
+        labels: 'service=web'
+
+    networks:
+      - arcup-frontend
+
+    command: pnpm dev
+
+  # ============================
+  # Supabase PostgreSQL Database
+  # Persistent data storage with health monitoring
+  # ============================
+  supabase-db:
+    image: postgres:15-alpine
+    container_name: arcup-supabase-db
+    ports:
+      - "54322:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-postgres}
+      POSTGRES_INITDB_ARGS: "--locale en_US.utf8"
+
+    volumes:
+      - supabase-db-data:/var/lib/postgresql/data:rw
+
+    # Improved healthcheck
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1.5G
+        reservations:
+          cpus: '0.5'
+          memory: 1G
+
+    # Log rotation
+    logging:
+      driver: json-file
+      options:
+        max-size: '100m'
+        max-file: '5'
+        labels: 'service=postgres'
+
+    # Restart policy
+    restart: unless-stopped
+
+    networks:
+      - arcup-backend
+
+  # ============================
+  # Supabase Studio (Web UI)
+  # Database management interface
+  # ============================
+  supabase-studio:
+    image: supabase/studio:latest
+    container_name: arcup-supabase-studio
+    ports:
+      - "54323:3000"
+    environment:
+      SUPABASE_URL: http://supabase-kong:8000
+      SUPABASE_PUBLIC_URL: http://localhost:54321
+      SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+
+    depends_on:
+      supabase-kong:
+        condition: service_healthy
+
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+    # Log rotation
+    logging:
+      driver: json-file
+      options:
+        max-size: '50m'
+        max-file: '3'
+        labels: 'service=supabase-studio'
+
+    # Restart policy
+    restart: unless-stopped
+
+    networks:
+      - arcup-backend
+
+  # ============================
+  # Supabase Kong API Gateway
+  # API routing and authentication
+  # ============================
+  supabase-kong:
+    image: kong:2.8.1-alpine
+    container_name: arcup-supabase-kong
+    ports:
+      - "54321:8000"
+      - "54320:8443"
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /etc/kong/kong.yml
+      KONG_DNS_ORDER: "LAST,A,CNAME"
+      KONG_PLUGINS: "request-transformer,cors,key-auth,acl"
+      KONG_LOG_LEVEL: "notice"
+
+    volumes:
+      - ./supabase/kong.yml:/etc/kong/kong.yml:ro
+
+    # Improved healthcheck with no-cache flag to avoid curl issues
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8001/status"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+    depends_on:
+      supabase-db:
+        condition: service_healthy
+
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+    # Log rotation
+    logging:
+      driver: json-file
+      options:
+        max-size: '100m'
+        max-file: '5'
+        labels: 'service=kong'
+
+    # Restart policy
+    restart: unless-stopped
+
+    networks:
+      - arcup-backend
+
+# ============================
+# Networks - Isolated for security
+# ============================
+networks:
+  # Frontend network (web app)
+  arcup-frontend:
+    driver: bridge
+    driver_opts:
+      com.docker.network.bridge.name: br-arcup-frontend
+
+  # Backend network (database, services)
+  arcup-backend:
+    driver: bridge
+    driver_opts:
+      com.docker.network.bridge.name: br-arcup-backend
+    internal: false
+
+# ============================
+# Volumes - Named volumes with drivers
+# ============================
+volumes:
+  supabase-db-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${DB_DATA_PATH:-./.data/supabase}

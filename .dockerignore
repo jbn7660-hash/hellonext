@@ -1,0 +1,107 @@
+# ============================
+# Docker Build Context Exclusions
+# Next.js Monorepo Configuration
+# ============================
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Dependencies
+node_modules
+pnpm-store
+.pnpm-store
+yarn.lock
+package-lock.json
+
+# Environment Variables
+.env
+.env.local
+.env.*.local
+
+# Build Artifacts
+.next
+dist
+build
+out
+coverage
+
+# Test Files
+.nyc_output
+*.lcov
+.coverage
+
+# IDE & Editor
+.vscode
+.idea
+*.swp
+*.swo
+*~
+.DS_Store
+*.sublime-project
+*.sublime-workspace
+.prettierignore
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# OS Files
+Thumbs.db
+.DS_Store
+desktop.ini
+
+# Documentation
+README.md
+CHANGELOG.md
+docs/
+*.md
+
+# CI/CD
+.github
+.gitlab-ci.yml
+.circleci
+Jenkinsfile
+
+# Docker Files (not needed in image)
+docker-compose.yml
+docker-compose.test.yml
+Dockerfile
+.dockerignore
+
+# Development Files
+.editorconfig
+.eslintrc*
+.prettierrc*
+tsconfig.json
+next.config.js
+postcss.config.js
+tailwind.config.js
+
+# Testing
+vitest.config.ts
+playwright.config.ts
+jest.config.js
+cypress.config.ts
+
+# Package Manager Configs
+.npmrc
+.yarnrc
+pnpm-workspace.yaml
+
+# Temp & Cache
+.cache
+.turbo
+tmp/
+temp/
+*.tmp
+
+# Runtime
+.env.example
+.envrc
