@@ -17,6 +17,7 @@
     "plugins": [
       { "name": "next" }
     ],
+    "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
       "@hellonext/shared/*": ["../../packages/shared/*"]

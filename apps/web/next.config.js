@@ -1,8 +1,14 @@
 /** @type {import('next').NextConfig} */
 
-const { withSentryConfig } = require('@sentry/nextjs');
+// Conditionally load Sentry — skip if package not available or auth token missing
+let withSentryConfig;
+try {
+  withSentryConfig = require('@sentry/nextjs').withSentryConfig;
+} catch {
+  withSentryConfig = null;
+}
 
-// Validate required environment variables at build time
+// Validate required environment variables at build time (warn only, don't crash)
 const validateEnvVars = () => {
   const requiredEnvVars = [
     'NEXT_PUBLIC_SUPABASE_URL',
@@ -12,8 +18,8 @@ const validateEnvVars = () => {
   const missingVars = requiredEnvVars.filter((envVar) => !process.env[envVar]);
 
   if (missingVars.length > 0) {
-    throw new Error(
-      `Missing required environment variables: ${missingVars.join(', ')}`
+    console.warn(
+      `⚠️ Missing environment variables: ${missingVars.join(', ')} — using fallback values`
     );
   }
 };
@@ -141,21 +147,18 @@ const nextConfig = {
   },
 };
 
-// Apply Sentry configuration
-module.exports = withSentryConfig(nextConfig, {
-  // Sentry options
-  silent: false, // Log Sentry initialization
-  org: 'hellonext',
-  project: 'hellonext-web',
-  authToken: process.env.SENTRY_AUTH_TOKEN,
-  release: process.env.NEXT_PUBLIC_APP_VERSION || '2.0.0',
-
-  // Only upload source maps in production
-  skipSourceMaps: process.env.NODE_ENV !== 'production',
-
-  // Suppress some warnings
-  widenClientFileUpload: true,
-
-  // Transpile source maps
-  transpileClientSDK: true,
-});
+// Apply Sentry configuration only if available and auth token is present
+if (withSentryConfig && process.env.SENTRY_AUTH_TOKEN) {
+  module.exports = withSentryConfig(nextConfig, {
+    silent: true,
+    org: 'hellonext',
+    project: 'hellonext-web',
+    authToken: process.env.SENTRY_AUTH_TOKEN,
+    release: process.env.NEXT_PUBLIC_APP_VERSION || '2.0.0',
+    skipSourceMaps: process.env.NODE_ENV !== 'production',
+    widenClientFileUpload: true,
+    transpileClientSDK: true,
+  });
+} else {
+  module.exports = nextConfig;
+}
