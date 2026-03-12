@@ -1,4 +1,5 @@
 /** @type {import('next').NextConfig} */
+const path = require('path');
 
 // Conditionally load Sentry — skip if package not available or auth token missing
 let withSentryConfig;
@@ -111,6 +112,10 @@ const nextConfig = {
 
   // Custom webpack configuration for bundle analysis
   webpack: (config, options) => {
+    // Explicit path alias for Vercel compatibility
+    // (tsconfig paths not reliably resolved in Vercel build environment)
+    config.resolve.alias['@'] = path.resolve(__dirname, 'src');
+
     // Add bundle analyzer in development if requested
     if (process.env.ANALYZE === 'true' && !options.isServer) {
       const BundleAnalyzerPlugin =
