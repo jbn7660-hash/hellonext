@@ -127,11 +127,18 @@
 - [ ] (auth)/callback → 세션 생성 확인
 - [ ] middleware.ts → 역할 기반 리다이렉트 실 테스트
 
-### 1-3. Vercel 배포
-- [ ] Vercel 프로젝트 생성 + GitHub 연결
-- [ ] 환경변수 설정 (Supabase, Sentry, OpenAI 등)
-- [ ] 프리뷰 배포 → 로그인 플로우 검증
-- [ ] Sentry 에러 추적 확인
+### 1-3. Vercel 배포 ✅ 완료 (2026-03-12 세션 13)
+- [x] Vercel 프로젝트 생성 + GitHub 연결 → `prj_FT3QGs5kfcnO6LB2vMXW5ai5wz4l`
+- [x] 환경변수 설정 (NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY — fallback 동작 확인)
+- [x] pnpm 모노레포 빌드 에러 해결 (8 커밋: @/ 경로, tailwindcss/postcss, typescript/types)
+- [x] 프리뷰 배포 성공 → `https://hellonext-git-main-jbn7660-hashs-projects.vercel.app/`
+- [ ] Sentry 에러 추적 확인 → Sprint 2 이후 (SENTRY_AUTH_TOKEN 미설정)
+
+#### Sprint 1-3에서 수정된 코드
+- `apps/web/next.config.js`: webpack resolve alias `@` → `path.resolve(__dirname, 'src')` 추가 (Vercel tsconfig paths 미인식 대응)
+- `apps/web/package.json`: devDependencies → dependencies 이동 (tailwindcss, postcss, autoprefixer, typescript, @types/*, eslint, eslint-config-next)
+- `apps/web/postcss.config.js`: string 기반 플러그인 형식 유지 확인 (Next.js 요구사항)
+- `.npmrc`: 최종 상태 유지 (shamefully-hoist, node-linker 불필요 확인)
 
 ### 1-4. 기본 플로우 E2E 검증
 - [ ] 프로 가입 → 온보딩 → 대시보드 접근

@@ -51,6 +51,8 @@
 - **Sentry v8 마이그레이션:** `tracingOrigins` → `tracePropagationTargets`, `maskAllTextSelector` → `mask`, `profilesSampleRate`/`profilerIntegration`/`startTransaction` 제거, `breadcrumbsIntegration({click})` → `{dom}`.
 - **Next.js App Router 주의사항:** (1) `useSearchParams`는 반드시 `<Suspense>` 래핑 필요 (2) `metadata` export와 `onClick`은 공존 불가 (Server/Client 분리) (3) `experimental.optimizeServerComponents` 삭제됨.
 - **API route 스키마 미스매치 패턴:** AI 생성 코드가 DB에 없는 컬럼(avatar_url, handicap, plan_id 등)을 참조. 실 DB 스키마와 코드 동기화는 각 기능 스프린트에서 처리.
+- **Vercel pnpm 모노레포 빌드 패턴:** (1) devDependencies가 빌드 시 접근 불가 → PostCSS 플러그인(tailwindcss, postcss, autoprefixer), TypeScript, @types/*, eslint 모두 dependencies로 이동 필수 (2) tsconfig paths (`@/*`) Vercel에서 미인식 → webpack resolve alias 필수 (`config.resolve.alias['@'] = path.resolve(__dirname, 'src')`) (3) PostCSS 플러그인은 반드시 string 형식 (`{ tailwindcss: {} }`) — `require()` 사용 시 Next.js 에러 (4) `.npmrc`의 `shamefully-hoist`, `node-linker=hoisted`는 효과 없음 — 근본 원인은 dependency 위치.
+- **Vercel API 프록시 제한:** Cowork VM에서 `api.vercel.com` 직접 호출 시 403. Chrome 브라우저를 통한 확인 필요.
 
 ## 기존 산출물 목록
 
@@ -85,6 +87,7 @@
 - ✅ ~~93+ 파일 AI 생성 코드의 실행 가능 여부 미검증~~ → Phase 0-1 완료 (546 TS에러, 빌드 실패, 분류 완료)
 - ⚠️ **apps/mobile 코드 품질 미확인** → 7 TS에러 확인됨 (P4~P6), Expo 빌드 테스트는 Sprint 3+ 연기
 - ✅ **Supabase 프로젝트 연결 완료** → phstuugdppfutjcpislh (Seoul), 28테이블, 61 RLS정책, database.types.ts 생성
+- ✅ **Vercel 배포 완료** → prj_FT3QGs5kfcnO6LB2vMXW5ai5wz4l, `hellonext-git-main-jbn7660-hashs-projects.vercel.app`, 빌드 성공 (1m 25s)
 - ⚠️ **Web typecheck OOM** → Cowork VM (4GB)에서 Next.js tsc 불가. CI 환경(GitHub Actions)에서 검증 필요
 - ⚠️ **pnpm install EPERM on mounted folder** → Cowork VM의 마운트 폴더에서 pnpm 불가. 로컬 복사 후 실행하는 패턴 사용
 
@@ -104,3 +107,4 @@
 | 2026-03-12 | 9b | Phase 0-2 코드 내용 리뷰 | 마이그레이션·EF·API·shared 전수검사: CRITICAL 7건, HIGH 8건, MEDIUM 다수. 통합검증 9건 반영 확인 |
 | 2026-03-12 | 10~11 | Sprint 1-1 Supabase 연결 | 프로젝트 생성, 마이그레이션 001~017 실행, 28테이블+61RLS정책 확인, database.types.ts 생성, shared/mobile typecheck 통과 |
 | 2026-03-12 | 12 | Web 빌드 에러 수정 | types.ts 교체, .from<any>() 89건 수정, Sentry v8 마이그레이션, CSS/login/offline 수정 → **빌드 성공** (29페이지) |
+| 2026-03-12 | 13 | Sprint 1-3 Vercel 배포 | @/ 경로 해결, pnpm devDeps→deps 이동, Vercel 빌드 성공 (8커밋), 배포 URL 확인 |
