@@ -1,0 +1,7 @@
+feat(web): close PR-1 smoke tests with real external checks
+
+- replace OpenAI models ping with real Whisper transcription smoke call
+- replace Cloudinary config check with real signed raw upload smoke call
+- keep smoke route protected by X-Smoke-Token / SMOKE_TOKEN
+- add required env names to example files
+- document PR-1 validation steps and acceptance criteria

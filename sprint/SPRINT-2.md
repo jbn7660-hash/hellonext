@@ -7,6 +7,11 @@ Repo: hellonext
 ## Goal
 - 음성 → 전사(Whisper) → 구조화(LLM) → 리포트 생성 → 알림(푸시/알림톡)까지 최소 1개 E2E 성공.
 
+## Quick links
+- Visual dashboard: [STATUS-DASHBOARD.md](./STATUS-DASHBOARD.md)
+- Current sprint status: [STATUS.md](./STATUS.md)
+- PR-1 smoke validation notes: [team-sprint-2-pr1-smoketests.md](./team-sprint-2-pr1-smoketests.md)
+
 ## Non-goals (이번 스프린트에서 안 함)
 - Kakao OAuth account_email 이슈 해결(블로커로 backlog)
 - 결제/수익화(Toss)
