@@ -31,9 +31,22 @@ const PUBLIC_ROUTES = new Set([
   '/invite',
 ]);
 
-/** Route prefix patterns for role-based access */
-const PRO_ROUTE_PREFIX = '/(pro)';
-const MEMBER_ROUTE_PREFIX = '/(member)';
+/** Pro-only routes (Next.js route groups are NOT part of the URL) */
+const PRO_ROUTES = new Set([
+  '/dashboard',
+  '/reports',
+  '/onboarding',
+  '/coupons',
+  '/subscription',
+]);
+
+/** Member-only routes */
+const MEMBER_ROUTES = new Set([
+  '/swingbook',
+  '/practice',
+  '/progress',
+  '/redeem',
+]);
 
 /**
  * Checks if a pathname matches any public route.
@@ -81,7 +94,8 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Skip middleware for public routes and static assets
-  if (isPublicRoute(pathname)) {
+  // Also treat /offline, /invite/* as public
+  if (isPublicRoute(pathname) || pathname === '/offline') {
     // Still refresh the auth token for public routes
     const { supabaseResponse } = await createClient(request);
     return supabaseResponse;
@@ -109,23 +123,24 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(loginUrl);
     }
 
+    // Helper: get the first path segment (e.g. /dashboard, /reports/123 → /dashboard, /reports)
+    const firstSegment = '/' + pathname.split('/').filter(Boolean)[0];
+
     // Enforce pro-only routes
-    if (pathname.includes(PRO_ROUTE_PREFIX) && role !== 'pro') {
-      const redirectUrl = new URL('/(member)/swingbook', request.url);
-      return NextResponse.redirect(redirectUrl);
+    if ((PRO_ROUTES.has(firstSegment) || PRO_ROUTES.has(pathname)) && role !== 'pro') {
+      return NextResponse.redirect(new URL('/swingbook', request.url));
     }
 
     // Enforce member-only routes
-    if (pathname.includes(MEMBER_ROUTE_PREFIX) && role !== 'member') {
-      const redirectUrl = new URL('/(pro)/dashboard', request.url);
-      return NextResponse.redirect(redirectUrl);
+    if ((MEMBER_ROUTES.has(firstSegment) || MEMBER_ROUTES.has(pathname)) && role !== 'member') {
+      return NextResponse.redirect(new URL('/dashboard', request.url));
     }
 
     // Root redirect based on role
     if (pathname === '/') {
       const homeUrl = role === 'pro'
-        ? new URL('/(pro)/dashboard', request.url)
-        : new URL('/(member)/swingbook', request.url);
+        ? new URL('/dashboard', request.url)
+        : new URL('/swingbook', request.url);
       return NextResponse.redirect(homeUrl);
     }
 
