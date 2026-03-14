@@ -1,10 +1,6 @@
-// DEPRECATED: Migrated to src/instrumentation.ts — remove after Next.js 14.2+ confirmed working
-
 /**
- * Sentry Server Configuration (v3.0 Patent Engine Monitoring)
- * API route monitoring, database query tracking, Edge Function instrumentation
- *
- * Auto-loaded by @sentry/nextjs
+ * Sentry Node.js Runtime Initialization
+ * Migrated from sentry.server.config.ts — preserves all original configuration.
  */
 
 import * as Sentry from '@sentry/nextjs';

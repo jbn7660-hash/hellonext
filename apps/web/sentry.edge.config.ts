@@ -1,3 +1,5 @@
+// DEPRECATED: Migrated to src/instrumentation.ts — remove after Next.js 14.2+ confirmed working
+
 /**
  * Sentry Edge Configuration
  *
