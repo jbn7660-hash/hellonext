@@ -395,8 +395,8 @@ async function reverseTraverse(
           }
         }
 
-        // Continue traversal up the chain
-        await traverseEffect(causeName, pathLength + 1, new Set(visited));
+        // Continue traversal up the chain (share visited set to prevent duplicate traversal)
+        await traverseEffect(causeName, pathLength + 1, visited);
       }
     }
   }
