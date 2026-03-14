@@ -25,14 +25,21 @@
 - Voice pipeline maintenance: [VOICE_PIPELINE_MAINTENANCE_2026-03-14.md](./VOICE_PIPELINE_MAINTENANCE_2026-03-14.md)
 - Architecture review: [ARCHITECTURE_RELIABILITY_REVIEW_2026-03-14.md](./ARCHITECTURE_RELIABILITY_REVIEW_2026-03-14.md)
 
+## Latest update (2026-03-14 session 2)
+- Groq fallback added to voice-transcribe-worker (Whisper) and voice-report-worker (ChatGPT)
+- All 13 Edge Functions deployed to remote (was 4, now 13)
+  - New: send-notification, push-send, causal-analysis, coupon-activate, edge-weight-calibration, measurement-confidence, swing-analysis, verification-handler, voice-to-report
+- Frontend E2E routing/auth guards verified on local dev server
+- Git pushed to sprint-2-core-loop (secret scanning resolved)
+
 ## Next actions
-- OpenAI quota 충전 후 `./scripts/run-voice-smoke-admin.sh remote`로 실제 Whisper+ChatGPT E2E 검증 마무리
-- PR-1 close (external dependency validation — 대부분 완료, Whisper/ChatGPT 실호출만 남음)
-- Edge Function deployment 확인 (voice-transcribe, voice-transcribe-worker, voice-report-worker, voice-fsm-controller 모두 배포 완료)
-- 알림 파이프라인 (send-notification / push-send) 착수
+- Add GROQ_API_KEY to Supabase Edge Function secrets → then smoke test
+- Or: charge OpenAI billing → smoke test with OpenAI directly
+- Fix health check to call Supabase EF URLs directly (currently 404 on sub-routes)
+- PR-1 close (external dependency validation — blocked on Whisper/ChatGPT quota)
 - Kakao 알림톡 비즈채널/템플릿 심사 시작 (optional)
 
 ## Blockers
-- OpenAI API quota exhausted — Whisper + ChatGPT 모두 429. billing 충전 필요.
+- OpenAI API quota exhausted — Whisper + ChatGPT 모두 429. Groq fallback code ready but GROQ_API_KEY not yet set.
 - Kakao OAuth KOE205 / account_email permission locked. Skipped for Sprint 2.
 - hellonext.app 도메인 미배포 상태 — 프론트엔드 배포 필요 시 별도 진행

@@ -60,33 +60,33 @@
 
 | ID | 위치 | 이슈 | 스프린트 |
 |----|------|------|---------|
-| C1 | 008_rls_policies.sql | `FOR ALL USING(...)` → INSERT에 WITH CHECK 누락 (6건) | Sprint 1-1 |
-| C2 | 016_voice_memo_cache.sql:72 | FSM enforce_fsm_transition() NULL 허용 버그 → 미정의 상태 전이 통과 | Sprint 1-1 |
-| C3 | 020_transcription_jobs.sql:42 | `update_push_tokens_timestamp()` 재사용 → `handle_updated_at()` 사용해야 함 | Sprint 1-1 |
-| C4 | push-send EF:89 | results 배열 미초기화 → 런타임 에러 | Sprint 2-2 |
-| C5 | push-send EF:42 | SERVICE_KEY 인증 로직 역전 | Sprint 2-2 |
-| C6 | swing-videos route:193 | pro-member link 미검증 → 인가 우회 | Sprint 1-4 |
-| C7 | voice-memos route:127 | `subscription_status` 컬럼 미존재 (스키마 불일치) | Sprint 2-3 |
+| C1 | 008_rls_policies.sql | ✅ 022 마이그레이션으로 수정 (pose_data WITH CHECK + pro INSERT 정책) | Sprint 1-1 |
+| C2 | 016_voice_memo_cache.sql:72 | ✅ 021 마이그레이션으로 수정 (NULL 가드 추가) | Sprint 1-1 |
+| C3 | 020_transcription_jobs.sql:42 | ✅ 021 마이그레이션으로 수정 (handle_updated_at 사용) | Sprint 1-1 |
+| C4 | push-send EF:89 | ✅ 이미 수정됨 (results 초기화 확인) | Sprint 2-2 |
+| C5 | push-send EF:42 | ✅ 이미 수정됨 (인증 로직 정상) | Sprint 2-2 |
+| C6 | swing-videos route:193 | ✅ 이미 수정됨 (pro_member_links 검증 추가) | Sprint 1-4 |
+| C7 | voice-memos route:127 | ✅ 이미 수정됨 (pro_profiles.tier 사용) | Sprint 2-3 |
 
 **HIGH (초기 안정화 단계 수정):**
 
 | ID | 위치 | 이슈 | 스프린트 |
 |----|------|------|---------|
-| H1 | 002,004,005 마이그레이션 | nullable FK에 ON DELETE 절 누락 (6건) | Sprint 1-1 |
+| H1 | 002,004,005 마이그레이션 | ✅ 021 마이그레이션으로 수정 (ON DELETE SET NULL 4건) | Sprint 1-1 |
 | H2 | causal-analysis EF:271 | DFS 사이클 탐지 visited 공유 버그 | Sprint 5 |
-| H3 | send-notification EF:415 | FCM 인증에 raw JSON 사용 (OAuth2 토큰 필요) | Sprint 2-2 |
+| H3 | send-notification EF:415 | ✅ JWT→OAuth2 access token 방식으로 수정 | Sprint 2-2 |
 | H4 | API routes 다수 | Zod 검증 누락 (causal-analysis, edit-deltas) | Sprint 5 |
 | H5 | payments route:81 | rate limit에 user.id 대신 proProfile.id 필요 | Sprint 4 |
 | H6 | subscriptions route:150 | `.single()` → `.maybeSingle()` 변경 필요 | Sprint 4 |
 | H7 | progress route:159 | `Math.random()` placeholder 데이터 | Sprint 3 |
-| H8 | EF import 불일치 | deno std/supabase-js 버전 2~3개 혼재 | Sprint 2 |
+| H8 | EF import 불일치 | ✅ 전체 EF 통일 (std@0.208.0, supabase-js@2.45.0) | Sprint 2 |
 
 **MEDIUM (점진적 개선):**
 - Edge Function: 에러 핸들링 강화 (voice-to-report catch 스코프, voice-transcribe 조용한 실패)
 - shared/index.ts: causal-graph-seed, coupon, payment, subscription 타입 export 누락
 - Edge Function → shared 타입 미사용 (로컬 중복 정의)
 - next.config.js: Sentry instrumentation.ts 마이그레이션 필요
-- API routes: 비동기 fetch 미대기 (reports/publish, payments/webhook)
+- ~~API routes: 비동기 fetch 미대기 (reports/publish, payments/webhook)~~ ✅ await + error logging 추가
 
 **양호 사항:**
 - 통합검증 9건 전부 반영 확인 (CRITICAL 3 + HIGH 5 + MEDIUM 1)
@@ -151,15 +151,16 @@
 > 음성→리포트 파이프라인 실 동작 + FSM
 
 ### 2-1. 외부 API 연결
-- [ ] OpenAI API 키 설정 + Whisper 호출 테스트
-- [ ] Cloudinary 계정 설정 + 업로드 테스트
+- [ ] OpenAI API 키 설정 + Whisper 호출 테스트 (스킵 — billing 미충전)
+- [x] Cloudinary 계정 설정 + 업로드 테스트 ✅ (signed + unsigned preset 검증 완료)
 - [ ] 카카오 알림톡 비즈니스 채널 등록 + 템플릿 심사
 
-### 2-2. Edge Function 배포
-- [ ] voice-to-report 실 배포 + 테스트
-- [ ] voice-fsm-controller 실 배포 + FSM 전이 검증
-- [ ] voice-transcribe 실 배포 + Whisper 연동
-- [ ] send-notification + push-send 실 배포
+### 2-2. Edge Function 배포 ✅ 완료 (2026-03-14)
+- [x] 13개 전체 배포 완료 (voice-*, push-send, send-notification, causal-analysis, measurement-confidence 등)
+- [x] H3 수정: send-notification FCM 인증 → OAuth2 JWT 기반으로 교체
+- [x] H8 수정: 전체 EF import 버전 통일 (deno std@0.208.0, supabase-js@2.45.0)
+- [x] Groq fallback 추가 (voice-transcribe-worker, voice-report-worker)
+- [ ] 실 테스트: API 키 설정 후 E2E 검증 필요
 
 ### 2-3. 음성→리포트 E2E
 - [ ] 프로가 음성 녹음 → Whisper 전사 → LLM 구조화 → 리포트 생성
