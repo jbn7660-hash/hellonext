@@ -155,17 +155,21 @@
 - [x] Cloudinary 계정 설정 + 업로드 테스트 ✅ (signed + unsigned preset 검증 완료)
 - [ ] 카카오 알림톡 비즈니스 채널 등록 + 템플릿 심사
 
-### 2-2. Edge Function 배포 ✅ 완료 (2026-03-14)
+### 2-2. Edge Function 배포 ✅ 완료 (2026-03-14, 재배포 2026-03-15)
 - [x] 13개 전체 배포 완료 (voice-*, push-send, send-notification, causal-analysis, measurement-confidence 등)
 - [x] H3 수정: send-notification FCM 인증 → OAuth2 JWT 기반으로 교체
 - [x] H8 수정: 전체 EF import 버전 통일 (deno std@0.208.0, supabase-js@2.45.0)
 - [x] Groq fallback 추가 (voice-transcribe-worker, voice-report-worker)
-- [ ] 실 테스트: API 키 설정 후 E2E 검증 필요
+- [x] 전체 EF --no-verify-jwt 재배포 (JWT gateway 충돌 해결)
+- [x] DB migration: transcription_jobs provider constraint에 'groq' 추가
+- [x] 에러 직렬화 개선 (worker + FSM controller)
+- [x] **E2E Smoke Test 성공**: enqueue(202) → transcribe/Groq(200) → report(200)
 
-### 2-3. 음성→리포트 E2E
-- [ ] 프로가 음성 녹음 → Whisper 전사 → LLM 구조화 → 리포트 생성
-- [ ] 고아 메모 시나리오 (target_id 미매핑 → 후속 매핑)
-- [ ] FSM 상태 전이 로그 확인 (voice_memo_state_log)
+### 2-3. 음성→리포트 E2E ✅ 완료 (2026-03-15)
+- [x] 프로가 음성 녹음 → Whisper 전사 → LLM 구조화 → 리포트 생성 (admin bypass smoke)
+- [x] FSM 상태 전이 전체 검증: UNBOUND → PREPROCESSED → LINKED → FINALIZED
+- [ ] 고아 메모 시나리오 (target_id 미매핑 → 후속 매핑) — UI 연결 시 테스트
+- [ ] 프론트엔드 UI를 통한 실 사용자 E2E — Sprint 3 이후
 
 ---
 
