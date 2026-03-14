@@ -31,8 +31,7 @@ import { logger } from '@/lib/utils/logger';
 interface MemberSummary {
   id: string;
   display_name: string;
-  avatar_url: string | null;
-  handicap: number | null;
+  linked_at: string;
   recent_report_count: number;
   pending_memo_count: number;
   latest_feel_check: {
@@ -150,8 +149,7 @@ export default function ProDashboardPage() {
     if (memberSearch) {
       const query = memberSearch.toLowerCase();
       result = result.filter((m) =>
-        m.display_name.toLowerCase().includes(query) ||
-        m.handicap?.toString().includes(query)
+        m.display_name.toLowerCase().includes(query)
       );
     }
 
@@ -164,8 +162,7 @@ export default function ProDashboardPage() {
         result.sort((a, b) => b.pending_memo_count - a.pending_memo_count);
         break;
       case 'handicap':
-        result.sort((a, b) => (a.handicap ?? 999) - (b.handicap ?? 999));
-        break;
+        // handicap not available in current schema — fall through to last-active
       case 'last-active':
       default:
         result.sort((a, b) => {
@@ -469,9 +466,6 @@ function MemberCard({
           <span className="font-medium text-sm text-text-primary truncate">
             {member.display_name}
           </span>
-          {member.handicap != null && (
-            <span className="text-xs text-text-tertiary">HC {member.handicap}</span>
-          )}
         </div>
         <div className="flex items-center gap-2 mt-0.5">
           <span className="text-xs text-text-secondary">

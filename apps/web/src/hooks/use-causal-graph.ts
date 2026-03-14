@@ -26,9 +26,8 @@ import type {
   CausalGraphEdge,
   IISResult,
   DependencyModel,
-  isValidDAG,
+  AnalysisProgress,
 } from '@hellonext/shared/types';
-import type { AnalysisProgress } from '@hellonext/shared/types';
 
 /**
  * Hook state.
@@ -105,61 +104,114 @@ export function useCausalGraph(sessionId?: string): UseCausalGraphState & UseCau
   );
 
   // Fetch with retry logic
+  // DB schema: causal_graph_edges (from_node, to_node, weight, edge_type, calibration_count, calibrated_at)
+  //            error_patterns (id, code, name_ko, name_en, description, position, causality_parents)
+  //            coaching_decisions (id, session_id, primary_fix, auto_draft, coach_edited, data_quality_tier, ...)
   const fetchWithRetry = useCallback(
     async (targetSessionId: string, attempt: number = 0): Promise<DependencyModel | null> => {
       try {
-        const { data, error: fetchError } = await supabase
-          .from('causal_graphs')
-          .select('*')
+        // 1. Fetch coaching decision for this session (contains IIS results in auto_draft)
+        const { data: decisionRaw, error: decisionError } = await supabase
+          .from('coaching_decisions')
+          .select('id, primary_fix, auto_draft, data_quality_tier')
           .eq('session_id', targetSessionId)
-          .single() as unknown as {
-            data: { nodes: any[]; edges: any[]; iis_results: any[] } | null;
-            error: Error | null;
-          };
+          .single();
 
-        if (fetchError) {
-          throw fetchError;
-        }
-
-        if (!data) {
+        if (decisionError && decisionError.code === 'PGRST116') {
+          // No decision found — no analysis yet
           return null;
         }
+        if (decisionError) throw decisionError;
 
-        // Validate graph structure (no orphan nodes)
-        const graphNodes: CausalGraphNode[] = (data.nodes || []).map((node: any) => ({
-          id: node.id,
-          label: node.label,
-          errorPattern: node.error_pattern,
-          iisScore: node.iis_score,
-        }));
+        const decision = decisionRaw as {
+          id: string;
+          primary_fix: string | null;
+          auto_draft: { detected_symptoms?: string[]; iis_scores?: Record<string, number>; causal_path?: string[] } | null;
+          data_quality_tier: string;
+        } | null;
 
-        const graphEdges: CausalGraphEdge[] = (data.edges || []).map((edge: any) => ({
-          source: edge.source,
-          target: edge.target,
+        if (!decision) return null;
+
+        // 2. Fetch causal graph edges
+        const { data: edgesRaw, error: edgesError } = await supabase
+          .from('causal_graph_edges')
+          .select('id, from_node, to_node, weight, edge_type');
+
+        if (edgesError) throw edgesError;
+
+        // 3. Fetch error patterns for node labels
+        const { data: patternsRaw, error: patternsError } = await supabase
+          .from('error_patterns')
+          .select('id, code, name_ko, position');
+
+        if (patternsError) throw patternsError;
+
+        const patterns = (patternsRaw ?? []) as { id: number; code: string; name_ko: string; position: string }[];
+        const patternMap = new Map(patterns.map((p) => [p.code, p]));
+
+        // Build nodes from auto_draft symptoms + edge endpoints
+        const nodeIdSet = new Set<string>();
+        const autoDraft = decision.auto_draft;
+        const iisScoresMap = autoDraft?.iis_scores ?? {};
+
+        // Collect all node IDs from edges
+        const edges = (edgesRaw ?? []) as { id: string; from_node: string; to_node: string; weight: number; edge_type: string }[];
+        edges.forEach((e) => {
+          nodeIdSet.add(e.from_node);
+          nodeIdSet.add(e.to_node);
+        });
+
+        // Also include detected symptoms
+        (autoDraft?.detected_symptoms ?? []).forEach((s: string) => nodeIdSet.add(s));
+
+        // Build graph nodes
+        const graphNodes: CausalGraphNode[] = Array.from(nodeIdSet).map((nodeId) => {
+          const pattern = patternMap.get(nodeId);
+          return {
+            id: nodeId,
+            label: pattern?.name_ko ?? nodeId,
+            errorPattern: nodeId,
+            iisScore: iisScoresMap[nodeId] ?? 0,
+          };
+        });
+
+        // Build graph edges (map DB columns to UI types)
+        const edgeTypeMap: Record<string, 'causes' | 'aggravates' | 'correlates'> = {
+          causes: 'causes',
+          aggravates: 'aggravates',
+          correlates: 'correlates',
+        };
+
+        const graphEdges: CausalGraphEdge[] = edges.map((edge) => ({
+          source: edge.from_node,
+          target: edge.to_node,
           weight: edge.weight,
-          type: edge.type || 'correlates',
+          type: edgeTypeMap[edge.edge_type] ?? 'correlates',
         }));
 
-        const iisResults: IISResult[] = (data.iis_results || []).map((result: any) => ({
-          nodeId: result.node_id,
-          score: result.score,
-          rank: result.rank,
-          causalPath: result.causal_path || [],
-          confidence: result.confidence || 0,
-          dataQualityTier: result.data_quality_tier || 'tier_3',
-        }));
+        // Build IIS results from auto_draft.iis_scores
+        const sortedIIS = Object.entries(iisScoresMap)
+          .sort(([, a], [, b]) => b - a)
+          .map(([nodeId, score], index) => ({
+            nodeId,
+            score,
+            rank: index + 1,
+            causalPath: autoDraft?.causal_path ?? [],
+            confidence: score,
+            dataQualityTier: (decision.data_quality_tier || 'tier_3') as 'tier_1' | 'tier_2' | 'tier_3',
+          }));
 
         // Import isValidDAG for runtime validation
-        const { isValidDAG } = await import('@hellonext/shared/types');
+        const { isValidDAG: validateDAG } = await import('@hellonext/shared/types');
 
         const model: DependencyModel = {
           nodes: graphNodes,
           edges: graphEdges,
-          iisResults,
-          primaryFix: iisResults.length > 0 ? (iisResults[0] ?? null) : null,
+          iisResults: sortedIIS,
+          primaryFix: sortedIIS.length > 0 ? (sortedIIS[0] ?? null) : null,
         };
 
-        const validationResult = isValidDAG(model);
+        const validationResult = validateDAG(model);
         if (!validationResult.valid) {
           logger.warn('Causal graph has structural issues', {
             orphanNodes: validationResult.orphanNodes,

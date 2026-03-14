@@ -144,7 +144,7 @@ export function useVerificationQueue(): UseVerificationQueueState & UseVerificat
         (payload) => {
           logger.info('Verification queue update received', {
             event: payload.eventType,
-            measurementId: (payload.new as Record<string, unknown>)?.measurement_id,
+            measurementStateId: (payload.new as Record<string, unknown>)?.measurement_state_id,
           });
           // Optimistic refresh - could be enhanced with payload-based updates
           refresh();
