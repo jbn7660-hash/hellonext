@@ -766,7 +766,7 @@ describe('Patent 3 Regression: Confidence Calculation (68 cases)', () => {
           confirmed: 2,
         };
 
-        expect(tierPriority[tiers[i]]).toBeGreaterThanOrEqual(tierPriority[tiers[i - 1]]);
+        expect(tierPriority[tiers[i]!]).toBeGreaterThanOrEqual(tierPriority[tiers[i - 1]!]);
       }
     });
 
@@ -936,7 +936,7 @@ describe('Patent 4 Regression: FSM Voice Lifecycle (51 cases)', () => {
     });
 
     it('[P4-DC5-013] FINALIZED → anything is invalid', () => {
-      expect([]).length === 0;
+      expect([]).toHaveLength(0);
     });
 
     // target_id NULL invariants (38 more)
@@ -1138,7 +1138,7 @@ describe('Patent 4 Regression: FSM Voice Lifecycle (51 cases)', () => {
 
     // Deadlock-free
     it('[P4-DC5-048] FINALIZED is sink state (no exit)', () => {
-      expect([]).length === 0; // No valid next states
+      expect([]).toHaveLength(0); // No valid next states
     });
 
     // All states reachable from initial
@@ -1185,7 +1185,7 @@ describe('Cross-Patent Integration Tests (54 cases)', () => {
   });
 
   it('[XPAT-002] FSM state affects data layer accessibility', () => {
-    const state: MeasurementState = 'PREPROCESSED';
+    const state = 'PREPROCESSED' as MeasurementState;
     const canAccessLayerB = state !== 'UNBOUND';
     expect(canAccessLayerB).toBe(true);
   });

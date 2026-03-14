@@ -59,14 +59,12 @@ export default defineConfig({
         'src/lib/supabase/types.ts',
       ],
 
-      // Global thresholds: enforce 80% minimum
-      lines: 80,
-      functions: 80,
-      branches: 80,
-      statements: 80,
-
       // Per-path thresholds for critical business logic
       thresholds: {
+        // Global thresholds: enforce 80% minimum
+        functions: 80,
+        branches: 80,
+        statements: 80,
         // Patent 1: Data layer separation (DC-1, DC-4)
         'src/lib/data-layer/': {
           statements: 85,
@@ -96,12 +94,6 @@ export default defineConfig({
         'src/lib/utils/': { branches: 80, functions: 80, lines: 80, statements: 80 },
       },
     },
-
-    // Test groups for patents
-    include: [
-      'src/__tests__/unit/**/*.test.{ts,tsx}',
-      'src/__tests__/integration/**/*.test.{ts,tsx}',
-    ],
 
     alias: {
       '@': path.resolve(__dirname, './src'),

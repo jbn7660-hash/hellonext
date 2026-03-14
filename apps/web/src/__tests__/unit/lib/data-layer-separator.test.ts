@@ -75,7 +75,7 @@ interface LayerC {
 /**
  * 통합 레이어 (DB에서 조인된 형태)
  */
-type MeasurementFull = LayerA & Omit<LayerB, "created_at" | "updated_at"> & Omit<LayerC, "id" | "updated_at">
+type MeasurementFull = LayerA & Omit<LayerB, "created_at" | "updated_at"> & Omit<LayerC, "id" | "updated_at"> & { updated_at: string }
 
 // ─── Data Layer Separator Implementation (mock) ──────────────
 

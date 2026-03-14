@@ -261,12 +261,12 @@ describe('Voice Memo FSM Pipeline (F-017)', () => {
       const logs = pipeline.getTransitionLogs();
 
       expect(logs.length).toBe(3);
-      expect(logs[0].fromState).toBe('UNBOUND');
-      expect(logs[0].toState).toBe('PREPROCESSED');
-      expect(logs[1].fromState).toBe('PREPROCESSED');
-      expect(logs[1].toState).toBe('LINKED');
-      expect(logs[2].fromState).toBe('LINKED');
-      expect(logs[2].toState).toBe('FINALIZED');
+      expect(logs[0]!.fromState).toBe('UNBOUND');
+      expect(logs[0]!.toState).toBe('PREPROCESSED');
+      expect(logs[1]!.fromState).toBe('PREPROCESSED');
+      expect(logs[1]!.toState).toBe('LINKED');
+      expect(logs[2]!.fromState).toBe('LINKED');
+      expect(logs[2]!.toState).toBe('FINALIZED');
     });
 
     it('should verify state sequence in happy path', async () => {

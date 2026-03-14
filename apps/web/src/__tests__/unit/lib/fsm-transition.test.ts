@@ -541,7 +541,7 @@ describe('FSM State Transition Validation (DC-5, Patent 4)', () => {
 
       const log = validator.getAuditLog();
       expect(log.length).toBe(1);
-      expect(log[0].success).toBe(true);
+      expect(log[0]!.success).toBe(true);
     });
 
     it('should record failed transition attempts in audit log', () => {
@@ -555,9 +555,9 @@ describe('FSM State Transition Validation (DC-5, Patent 4)', () => {
 
       const log = validator.getAuditLog();
       expect(log.length).toBe(1);
-      expect(log[0].success).toBe(false);
-      expect(log[0].fromState).toBe('UNBOUND');
-      expect(log[0].toState).toBe('LINKED');
+      expect(log[0]!.success).toBe(false);
+      expect(log[0]!.fromState).toBe('UNBOUND');
+      expect(log[0]!.toState).toBe('LINKED');
     });
 
     it('should track target_id in audit log entries', () => {
@@ -570,7 +570,7 @@ describe('FSM State Transition Validation (DC-5, Patent 4)', () => {
       });
 
       const log = validator.getAuditLog();
-      expect(log[0].targetId).toBe('target-123');
+      expect(log[0]!.targetId).toBe('target-123');
     });
 
     it('should maintain chronological order in audit log', () => {
@@ -590,7 +590,7 @@ describe('FSM State Transition Validation (DC-5, Patent 4)', () => {
       expect(log.length).toBe(3);
 
       for (let i = 0; i < log.length - 1; i++) {
-        expect(new Date(log[i].timestamp) <= new Date(log[i + 1].timestamp)).toBe(true);
+        expect(new Date(log[i]!.timestamp) <= new Date(log[i + 1]!.timestamp)).toBe(true);
       }
     });
 

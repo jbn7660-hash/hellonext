@@ -791,7 +791,7 @@ describe('Measurement Confidence Flow (F-016)', () => {
   describe('Batch Verification (Pro Verifying Multiple)', () => {
     // ─── 배치 검증: 프로가 여러 측정값 순차 검증 ───
     it('should allow pro to verify multiple measurements in sequence', async () => {
-      const pendingMeasurements = [];
+      const pendingMeasurements: Measurement[] = [];
 
       // Create 5 pending measurements
       for (let i = 0; i < 5; i++) {
