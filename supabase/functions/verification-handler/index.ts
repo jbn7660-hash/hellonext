@@ -21,21 +21,25 @@ type VerificationResponseType = 'confirm' | 'correct' | 'reject';
 
 interface VerificationQueueRecord {
   id: string;
-  measurement_id: string;
+  measurement_state_id: string;
   token: string;
-  state: 'pending' | 'verified' | 'rejected';
+  review_state: 'pending' | 'verified' | 'rejected';
+  reviewer_id: string | null;
+  response_type: string | null;
+  reviewed_at: string | null;
   created_at: string;
-  expires_at: string;
-  reviewer_id?: string | null;
 }
 
 interface MeasurementStateRecord {
   id: string;
   measurement_id: string;
-  state: 'confirmed' | 'pending_verification' | 'hidden';
+  session_id: string;
+  state: string;
   confidence_score: number;
-  created_at: string;
-  updated_at?: string;
+  predicted_value: Record<string, unknown> | null;
+  review_state: string;
+  issued_at: string;
+  updated_at: string;
 }
 
 interface CorrectedMeasurement {
@@ -54,10 +58,10 @@ interface VerificationHandlerRequest {
 
 interface VerificationResult {
   token: string;
-  measurement_id: string;
+  measurement_state_id: string;
   response_type: VerificationResponseType;
   measurement_state_updated: string;
-  new_state: string;
+  new_review_state: string;
   confidence_score?: number;
 }
 
@@ -66,6 +70,7 @@ interface VerificationResult {
 const CONFIDENCE_THRESHOLD_T1 = 0.7; // Threshold for 'confirmed'
 const CONFIDENCE_THRESHOLD_T2 = 0.4; // Threshold for 'pending_verification' vs 'hidden'
 const K_PARAMETER_DEFAULT = 0.85;
+const TOKEN_VALIDITY_HOURS = 24;
 
 // ─── Helpers ─────────────────────────────────────────────────────
 
@@ -85,8 +90,11 @@ function getKParameter(): number {
 }
 
 /**
- * Validate verification token and check expiration (24h).
+ * Validate verification token.
  * Per Patent 3 Claim 1(e): Authorization check and token validation.
+ *
+ * Note: verification_queue has no expires_at column.
+ * Token expiry is checked by comparing created_at + TOKEN_VALIDITY_HOURS against now.
  *
  * @param supabase - Supabase admin client
  * @param token - Verification token
@@ -109,17 +117,18 @@ async function validateToken(
     return null;
   }
 
-  // Check expiration (24h from creation)
-  const expiresAt = new Date(record.expires_at);
+  // Check expiration: created_at + TOKEN_VALIDITY_HOURS
+  const createdAt = new Date(record.created_at);
+  const expiresAt = new Date(createdAt.getTime() + TOKEN_VALIDITY_HOURS * 60 * 60 * 1000);
   const now = new Date();
   if (now > expiresAt) {
-    console.warn(`[verification-handler] Token expired: ${token}, expired at ${record.expires_at}`);
+    console.warn(`[verification-handler] Token expired: ${token}, created at ${record.created_at}`);
     return null;
   }
 
-  // Check state (should be 'pending')
-  if (record.state !== 'pending') {
-    console.warn(`[verification-handler] Token already processed: ${token}, state=${record.state}`);
+  // Check review_state (should be 'pending')
+  if (record.review_state !== 'pending') {
+    console.warn(`[verification-handler] Token already processed: ${token}, review_state=${record.review_state}`);
     return null;
   }
 
@@ -136,17 +145,18 @@ async function validateToken(
 
 /**
  * Recalculate confidence with corrected values.
+ * Uses spatial_data factors from raw_measurements as base, overrides with corrected values.
  */
 function recalculateConfidence(
-  baseMeasurement: Record<string, number>,
+  baseSpatialData: Record<string, number>,
   correctedValues: CorrectedMeasurement,
   k: number
 ): number {
-  const keypointVis = correctedValues.keypoint_visibility ?? baseMeasurement.keypoint_visibility;
-  const camAngle = correctedValues.camera_angle_quality ?? baseMeasurement.camera_angle_quality;
+  const keypointVis = correctedValues.keypoint_visibility ?? Number(baseSpatialData.keypoint_visibility) || 0;
+  const camAngle = correctedValues.camera_angle_quality ?? Number(baseSpatialData.camera_angle_quality) || 0;
   const motionBlur =
-    1 - (correctedValues.motion_blur_factor ?? baseMeasurement.motion_blur_factor);
-  const occlusion = 1 - (correctedValues.occlusion_factor ?? baseMeasurement.occlusion_factor);
+    1 - (correctedValues.motion_blur_factor ?? Number(baseSpatialData.motion_blur_factor) || 0);
+  const occlusion = 1 - (correctedValues.occlusion_factor ?? Number(baseSpatialData.occlusion_factor) || 0);
 
   const rawConfidence = keypointVis * camAngle * motionBlur * occlusion;
   const confidence = rawConfidence * k;
@@ -173,17 +183,10 @@ function classifyMeasurement(
  * Handle verification response (Patent 3 Claim 1(e) AC-5).
  *
  * Operations:
- * - confirm: Mark measurement_states as confirmed, update verification_queue status
- * - correct: Accept corrected values, recalculate confidence, update states
- * - reject: Mark measurement_states as hidden, update verification_queue status
- *
- * @param supabase - Supabase admin client
- * @param token - Verification token
- * @param responseType - Response type (confirm/correct/reject)
- * @param correctedValues - Corrected measurement values (for 'correct' operation)
- * @param reviewerId - ID of pro performing verification (for authorization)
- * @returns Verification result with updated measurement state
- * @throws Error if token invalid, authorization fails, or database operations fail
+ * - confirm: Mark measurement_states as confirmed, update verification_queue
+ * - correct: Accept corrected values, recalculate confidence, store corrections
+ *            in measurement_states.predicted_value (DC-1: Layer A immutable)
+ * - reject: Mark measurement_states as hidden, update verification_queue
  */
 async function handleVerification(
   supabase: ReturnType<typeof createClient>,
@@ -202,106 +205,93 @@ async function handleVerification(
     throw new Error('Invalid, expired, or unauthorized verification token');
   }
 
-  const measurementId = verificationRecord.measurement_id;
+  const measurementStateId = verificationRecord.measurement_state_id;
 
-  // Fetch current measurement state
+  // Fetch current measurement state by its id
   const { data: currentState, error: stateError } = await supabase
     .from('measurement_states')
     .select('*')
-    .eq('measurement_id', measurementId)
+    .eq('id', measurementStateId)
     .single();
 
   if (stateError || !currentState) {
-    throw new Error(`Measurement state not found: ${measurementId}`);
+    throw new Error(`Measurement state not found: ${measurementStateId}`);
   }
 
-  let newState: 'confirmed' | 'pending_verification' | 'hidden';
+  let newReviewState: 'confirmed' | 'pending_verification' | 'hidden';
   let newConfidenceScore = currentState.confidence_score;
+  let predictedValue = currentState.predicted_value;
 
   switch (responseType) {
     case 'confirm':
       // Pro confirms measurement is correct
       // Patent 3 Claim 1(e): Update measurement_states to 'confirmed'
-      newState = 'confirmed';
-      console.info(`[verification-handler] Confirmed measurement ${measurementId}`);
+      newReviewState = 'confirmed';
+      console.info(`[verification-handler] Confirmed measurement_state ${measurementStateId}`);
       break;
 
-    case 'correct':
+    case 'correct': {
       // Pro provides corrected values
       // Patent 3 Claim 1(e): Accept corrected values, recalculate confidence, update state
       if (!correctedValues) {
         throw new Error('Corrected values required for correct response');
       }
 
-      // Fetch original measurement data
+      // Fetch original measurement's spatial_data from raw_measurements (Layer A, read-only)
       const { data: measurement, error: measurementError } = await supabase
-        .from('measurement_data')
-        .select('*')
-        .eq('id', measurementId)
+        .from('raw_measurements')
+        .select('spatial_data')
+        .eq('id', currentState.measurement_id)
         .single();
 
       if (measurementError || !measurement) {
-        throw new Error(`Measurement data not found: ${measurementId}`);
+        throw new Error(`Raw measurement not found: ${currentState.measurement_id}`);
       }
 
       // Recalculate confidence with corrected values (DC-2 formula)
       const k = getKParameter();
-      newConfidenceScore = recalculateConfidence(measurement, correctedValues, k);
-      newState = classifyMeasurement(newConfidenceScore);
+      newConfidenceScore = recalculateConfidence(measurement.spatial_data, correctedValues, k);
+      newReviewState = classifyMeasurement(newConfidenceScore);
 
-      // Update measurement_data with corrected values
-      const updatePayload: Record<string, number> = {};
-      if (correctedValues.keypoint_visibility !== undefined) {
-        updatePayload.keypoint_visibility = correctedValues.keypoint_visibility;
-      }
-      if (correctedValues.camera_angle_quality !== undefined) {
-        updatePayload.camera_angle_quality = correctedValues.camera_angle_quality;
-      }
-      if (correctedValues.motion_blur_factor !== undefined) {
-        updatePayload.motion_blur_factor = correctedValues.motion_blur_factor;
-      }
-      if (correctedValues.occlusion_factor !== undefined) {
-        updatePayload.occlusion_factor = correctedValues.occlusion_factor;
-      }
-
-      const { error: updateError } = await supabase
-        .from('measurement_data')
-        .update(updatePayload)
-        .eq('id', measurementId);
-
-      if (updateError) {
-        console.warn(
-          `[verification-handler] Failed to update measurement data: ${updateError.message}`
-        );
-      }
+      // Store corrected values in predicted_value (DC-1: Layer A immutable, corrections go to Layer C)
+      predictedValue = {
+        ...(predictedValue || {}),
+        corrected_factors: correctedValues,
+        corrected_by: reviewerId || null,
+        corrected_at: new Date().toISOString(),
+      };
 
       console.info(
-        `[verification-handler] Corrected measurement ${measurementId}, new confidence=${newConfidenceScore.toFixed(3)}, new state=${newState}`
+        `[verification-handler] Corrected measurement_state ${measurementStateId}, new confidence=${newConfidenceScore.toFixed(3)}, new review_state=${newReviewState}`
       );
       break;
+    }
 
     case 'reject':
       // Pro rejects the measurement
       // Patent 3 Claim 1(e): Mark as 'hidden'
-      newState = 'hidden';
-      console.info(`[verification-handler] Rejected measurement ${measurementId}`);
+      newReviewState = 'hidden';
+      console.info(`[verification-handler] Rejected measurement_state ${measurementStateId}`);
       break;
 
-    default:
+    default: {
       // Exhaustive check - TypeScript won't compile if cases missing
       const _exhaustiveCheck: never = responseType;
       throw new Error(`Unknown response type: ${_exhaustiveCheck}`);
+    }
   }
 
   // Update measurement_states
   const { data: updatedState, error: updateStateError } = await supabase
     .from('measurement_states')
     .update({
-      state: newState,
+      state: newReviewState,
       confidence_score: newConfidenceScore,
+      review_state: newReviewState,
+      predicted_value: predictedValue,
       updated_at: new Date().toISOString(),
     })
-    .eq('measurement_id', measurementId)
+    .eq('id', measurementStateId)
     .select()
     .single();
 
@@ -309,11 +299,12 @@ async function handleVerification(
     throw new Error(`Failed to update measurement state: ${updateStateError.message}`);
   }
 
-  // Update verification_queue status (Patent 3 Claim 1(e))
+  // Update verification_queue (Patent 3 Claim 1(e))
   const { error: tokenError } = await supabase
     .from('verification_queue')
     .update({
-      state: 'verified',
+      review_state: responseType === 'reject' ? 'rejected' : 'verified',
+      response_type: responseType,
       reviewer_id: reviewerId || null,
       reviewed_at: new Date().toISOString(),
     })
@@ -326,15 +317,15 @@ async function handleVerification(
   // TODO: Trigger notification to member on verification completion
   // This will be implemented in Sprint 3.5 with notification service
   console.info(
-    `[verification-handler] Verification complete: ${measurementId} → ${newState} (token marked verified, should notify member)`
+    `[verification-handler] Verification complete: ${measurementStateId} → ${newReviewState} (token marked, should notify member)`
   );
 
   return {
     token,
-    measurement_id: measurementId,
+    measurement_state_id: measurementStateId,
     response_type: responseType,
     measurement_state_updated: updatedState?.id || '',
-    new_state: newState,
+    new_review_state: newReviewState,
     confidence_score: newConfidenceScore,
   };
 }
@@ -362,7 +353,7 @@ serve(async (req: Request) => {
     if (operation !== 'handleVerification') {
       console.warn(`[verification-handler] Unknown operation: ${operation}`);
       return new Response(
-        JSON.stringify({ error: 'Unknown operation' }),
+        JSON.stringify({ error: { code: 'UNKNOWN_OP', message: 'Unknown operation' } }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -370,7 +361,7 @@ serve(async (req: Request) => {
     if (!token || !response_type) {
       console.warn('[verification-handler] Missing required fields: token or response_type');
       return new Response(
-        JSON.stringify({ error: 'token and response_type are required' }),
+        JSON.stringify({ error: { code: 'MISSING_PARAM', message: 'token and response_type are required' } }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -391,20 +382,23 @@ serve(async (req: Request) => {
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    const statusCode = errorMessage.includes('Invalid') || errorMessage.includes('expired')
+    const message = error instanceof Error ? error.message : JSON.stringify(error);
+    const statusCode = message.includes('Invalid') || message.includes('expired')
       ? 401
       : 500;
 
     console.error(
-      `[verification-handler] Error (${statusCode}): ${errorMessage}`,
+      `[verification-handler] Error (${statusCode}): ${message}`,
       error instanceof Error ? error.stack : ''
     );
 
     return new Response(
       JSON.stringify({
-        error: 'Verification processing failed',
-        message: errorMessage,
+        error: {
+          code: statusCode === 401 ? 'AUTH_FAILED' : 'VERIFICATION_FAILED',
+          message: 'Verification processing failed',
+          details: message,
+        },
       }),
       { status: statusCode, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

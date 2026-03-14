@@ -18,17 +18,27 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 
 // ─── Types ───────────────────────────────────────────────────────
 
-interface MeasurementData {
-  id: string;
-  swing_id: string;
-  member_id: string;
-  keypoint_id: string;
+/**
+ * spatial_data JSONB structure inside raw_measurements.
+ * Contains per-keypoint confidence factors for the 5-factor formula.
+ */
+interface SpatialData {
   keypoint_visibility: number; // 0.0 - 1.0
   camera_angle_quality: number; // 0.0 - 1.0
   motion_blur_factor: number; // 0.0 - 1.0 (inverse: lower is better)
   occlusion_factor: number; // 0.0 - 1.0 (inverse: lower is better)
-  value: number;
-  timestamp: string;
+  [key: string]: unknown; // additional keypoint data
+}
+
+interface RawMeasurement {
+  id: string;
+  session_id: string;
+  frame_index: number;
+  spatial_data: SpatialData;
+  measurement_confidence: number;
+  source_model: string;
+  source_version: string;
+  created_at: string;
 }
 
 interface ConfidenceResult {
@@ -47,25 +57,30 @@ interface ConfidenceResult {
 interface MeasurementState {
   id: string;
   measurement_id: string;
-  state: 'confirmed' | 'pending_verification' | 'hidden';
+  session_id: string;
+  state: string;
   confidence_score: number;
-  created_at: string;
+  predicted_value: Record<string, unknown> | null;
+  review_state: string;
+  issued_at: string;
+  updated_at: string;
 }
 
 interface VerificationToken {
   id: string;
-  measurement_id: string;
+  measurement_state_id: string;
   token: string;
-  state: 'pending' | 'verified' | 'rejected';
+  review_state: 'pending' | 'verified' | 'rejected';
+  reviewer_id: string | null;
+  response_type: string | null;
+  reviewed_at: string | null;
   created_at: string;
-  expires_at: string;
 }
 
 interface MeasurementConfidenceRequest {
   operation: 'calculateConfidence' | 'classifyAndStore' | 'issueVerificationTokens';
   measurement_id?: string;
-  swing_id?: string;
-  member_id?: string;
+  session_id?: string;
 }
 
 // ─── Constants ───────────────────────────────────────────────────
@@ -73,7 +88,6 @@ interface MeasurementConfidenceRequest {
 const CONFIDENCE_THRESHOLD_T1 = 0.7; // Threshold for 'confirmed'
 const CONFIDENCE_THRESHOLD_T2 = 0.4; // Threshold for 'pending_verification' vs 'hidden'
 const K_PARAMETER_DEFAULT = 0.85; // Base reliability coefficient
-const TOKEN_VALIDITY_HOURS = 24;
 
 // ─── Helpers ─────────────────────────────────────────────────────
 
@@ -108,6 +122,23 @@ function generateVerificationToken(): string {
 }
 
 /**
+ * Extract confidence factors from spatial_data JSONB with safe defaults.
+ */
+function extractSpatialFactors(spatialData: SpatialData): {
+  keypoint_visibility: number;
+  camera_angle_quality: number;
+  motion_blur_factor: number;
+  occlusion_factor: number;
+} {
+  return {
+    keypoint_visibility: Number(spatialData.keypoint_visibility) || 0,
+    camera_angle_quality: Number(spatialData.camera_angle_quality) || 0,
+    motion_blur_factor: Number(spatialData.motion_blur_factor) || 0,
+    occlusion_factor: Number(spatialData.occlusion_factor) || 0,
+  };
+}
+
+/**
  * Calculate confidence score using 5-factor formula.
  *
  * Confidence = (keypoint_visibility × camera_angle × (1 - motion_blur) × (1 - occlusion)) × K
@@ -119,11 +150,13 @@ function generateVerificationToken(): string {
  * - occlusion_factor: occlusion [0,1] (inverted: 1 - occlusion)
  * - K: reliability coefficient from env
  */
-function calculateConfidenceScore(measurement: MeasurementData, k: number): ConfidenceResult {
-  const keypointVis = measurement.keypoint_visibility;
-  const camAngle = measurement.camera_angle_quality;
-  const motionBlur = 1 - measurement.motion_blur_factor; // Invert: lower blur = higher score
-  const occlusion = 1 - measurement.occlusion_factor; // Invert: lower occlusion = higher score
+function calculateConfidenceScore(measurement: RawMeasurement, k: number): ConfidenceResult {
+  const factors = extractSpatialFactors(measurement.spatial_data);
+
+  const keypointVis = factors.keypoint_visibility;
+  const camAngle = factors.camera_angle_quality;
+  const motionBlur = 1 - factors.motion_blur_factor; // Invert: lower blur = higher score
+  const occlusion = 1 - factors.occlusion_factor; // Invert: lower occlusion = higher score
 
   const rawConfidence = keypointVis * camAngle * motionBlur * occlusion;
   const confidence = rawConfidence * k;
@@ -169,9 +202,9 @@ async function calculateConfidence(
 ): Promise<ConfidenceResult> {
   console.info(`[measurement-confidence] calculateConfidence: ${measurementId}`);
 
-  // Fetch measurement data
+  // Fetch measurement data from raw_measurements
   const { data: measurement, error: fetchError } = await supabase
-    .from('measurement_data')
+    .from('raw_measurements')
     .select('*')
     .eq('id', measurementId)
     .single();
@@ -194,23 +227,21 @@ async function calculateConfidence(
 }
 
 /**
- * Classify all measurements for a swing and store in measurement_states.
+ * Classify all measurements for a session and store in measurement_states.
  */
 async function classifyAndStore(
   supabase: ReturnType<typeof createClient>,
-  swingId: string,
-  memberId: string
+  sessionId: string
 ): Promise<MeasurementState[]> {
   console.info(
-    `[measurement-confidence] classifyAndStore: swing=${swingId}, member=${memberId}`
+    `[measurement-confidence] classifyAndStore: session=${sessionId}`
   );
 
-  // Fetch all measurements for the swing
+  // Fetch all measurements for the session
   const { data: measurements, error: fetchError } = await supabase
-    .from('measurement_data')
+    .from('raw_measurements')
     .select('*')
-    .eq('swing_id', swingId)
-    .eq('member_id', memberId);
+    .eq('session_id', sessionId);
 
   if (fetchError || !measurements) {
     throw new Error(`Failed to fetch measurements: ${fetchError?.message}`);
@@ -220,6 +251,7 @@ async function classifyAndStore(
 
   const k = getKParameter();
   const states: MeasurementState[] = [];
+  const now = new Date().toISOString();
 
   for (const measurement of measurements) {
     const result = calculateConfidenceScore(measurement, k);
@@ -230,9 +262,13 @@ async function classifyAndStore(
       .from('measurement_states')
       .insert({
         measurement_id: measurement.id,
+        session_id: sessionId,
         state: classification,
         confidence_score: result.confidence_score,
-        created_at: new Date().toISOString(),
+        predicted_value: { factors: result.factors },
+        review_state: classification === 'pending_verification' ? 'pending' : classification,
+        issued_at: now,
+        updated_at: now,
       })
       .select()
       .single();
@@ -259,20 +295,18 @@ async function classifyAndStore(
  */
 async function issueVerificationTokens(
   supabase: ReturnType<typeof createClient>,
-  swingId: string,
-  memberId: string
+  sessionId: string
 ): Promise<VerificationToken[]> {
   console.info(
-    `[measurement-confidence] issueVerificationTokens: swing=${swingId}, member=${memberId}`
+    `[measurement-confidence] issueVerificationTokens: session=${sessionId}`
   );
 
-  // Fetch all pending_verification measurements for this swing and member
+  // Fetch all pending_verification measurement_states for this session
   const { data: pendingStates, error: fetchError } = await supabase
     .from('measurement_states')
-    .select('m:measurement_id(id, swing_id, member_id)')
-    .eq('state', 'pending_verification')
-    .eq('m.swing_id', swingId)
-    .eq('m.member_id', memberId);
+    .select('id, measurement_id, session_id')
+    .eq('review_state', 'pending')
+    .eq('session_id', sessionId);
 
   if (fetchError) {
     console.warn(`[measurement-confidence] Failed to fetch pending measurements: ${fetchError.message}`);
@@ -289,28 +323,25 @@ async function issueVerificationTokens(
   );
 
   const tokens: VerificationToken[] = [];
-  const expiresAt = new Date();
-  expiresAt.setHours(expiresAt.getHours() + TOKEN_VALIDITY_HOURS);
 
-  for (const state of pendingStates) {
+  for (const msState of pendingStates) {
     const token = generateVerificationToken();
     const now = new Date().toISOString();
 
     const { data: verificationToken, error: insertError } = await supabase
       .from('verification_queue')
       .insert({
-        measurement_id: state.measurement_id,
+        measurement_state_id: msState.id,
         token,
-        state: 'pending',
+        review_state: 'pending',
         created_at: now,
-        expires_at: expiresAt.toISOString(),
       })
       .select()
       .single();
 
     if (insertError) {
       console.warn(
-        `[measurement-confidence] Failed to issue token for ${state.measurement_id}: ${insertError.message}`
+        `[measurement-confidence] Failed to issue token for measurement_state ${msState.id}: ${insertError.message}`
       );
       continue;
     }
@@ -339,7 +370,7 @@ serve(async (req: Request) => {
 
   try {
     const body = (await req.json()) as MeasurementConfidenceRequest;
-    const { operation, measurement_id, swing_id, member_id } = body;
+    const { operation, measurement_id, session_id } = body;
 
     console.info(`[measurement-confidence] Operation: ${operation}`);
     const supabase = createSupabaseAdmin();
@@ -350,7 +381,7 @@ serve(async (req: Request) => {
       case 'calculateConfidence':
         if (!measurement_id) {
           return new Response(
-            JSON.stringify({ error: 'measurement_id is required for calculateConfidence' }),
+            JSON.stringify({ error: { code: 'MISSING_PARAM', message: 'measurement_id is required for calculateConfidence' } }),
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
@@ -358,30 +389,30 @@ serve(async (req: Request) => {
         break;
 
       case 'classifyAndStore':
-        if (!swing_id || !member_id) {
+        if (!session_id) {
           return new Response(
-            JSON.stringify({ error: 'swing_id and member_id are required for classifyAndStore' }),
+            JSON.stringify({ error: { code: 'MISSING_PARAM', message: 'session_id is required for classifyAndStore' } }),
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
-        result = await classifyAndStore(supabase, swing_id, member_id);
+        result = await classifyAndStore(supabase, session_id);
         break;
 
       case 'issueVerificationTokens':
-        if (!swing_id || !member_id) {
+        if (!session_id) {
           return new Response(
             JSON.stringify({
-              error: 'swing_id and member_id are required for issueVerificationTokens',
+              error: { code: 'MISSING_PARAM', message: 'session_id is required for issueVerificationTokens' },
             }),
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
-        result = await issueVerificationTokens(supabase, swing_id, member_id);
+        result = await issueVerificationTokens(supabase, session_id);
         break;
 
       default:
         return new Response(
-          JSON.stringify({ error: 'Unknown operation' }),
+          JSON.stringify({ error: { code: 'UNKNOWN_OP', message: 'Unknown operation' } }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
     }
@@ -391,12 +422,16 @@ serve(async (req: Request) => {
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
-    console.error('[measurement-confidence] Error:', error);
+    const message = error instanceof Error ? error.message : JSON.stringify(error);
+    console.error('[measurement-confidence] Error:', message);
 
     return new Response(
       JSON.stringify({
-        error: 'Confidence calculation failed',
-        message: error instanceof Error ? error.message : 'Unknown error',
+        error: {
+          code: 'CONFIDENCE_CALC_FAILED',
+          message: 'Confidence calculation failed',
+          details: message,
+        },
       }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
