@@ -137,12 +137,15 @@ async function bindTarget(supabase: SupabaseAdmin, memoId: string, targetId: str
 
   const { data, error } = await supabase
     .from('voice_memo_cache')
-    .update({ state: 'LINKED', target_id: targetId })
+    .update({ state: 'LINKED', target_id: targetId, updated_at: new Date().toISOString() })
     .eq('memo_id', memoId)
     .select('*')
     .single();
 
-  if (error || !data) throw error ?? new Error('Failed to bind target');
+  if (error || !data) {
+    const errMsg = error ? (typeof error === 'object' ? JSON.stringify(error) : String(error)) : 'No data returned';
+    throw new Error(`Failed to bind target: ${errMsg}`);
+  }
   return data as FSMCacheRecord;
 }
 
@@ -163,7 +166,10 @@ async function finalize(supabase: SupabaseAdmin, memoId: string): Promise<FSMCac
     .select('*')
     .single();
 
-  if (error || !data) throw error ?? new Error('Failed to finalize cache');
+  if (error || !data) {
+    const errMsg = error ? (typeof error === 'object' ? JSON.stringify(error) : String(error)) : 'No data returned';
+    throw new Error(`Failed to finalize cache: ${errMsg}`);
+  }
   return data as FSMCacheRecord;
 }
 
@@ -241,10 +247,13 @@ serve(async (req: Request) => {
     }
   } catch (error) {
     console.error('[voice-fsm-controller] Error:', error);
+    const message = error instanceof Error
+      ? error.message
+      : (typeof error === 'object' && error !== null ? JSON.stringify(error) : String(error));
     return json(
       {
         error: 'FSM operation failed',
-        message: error instanceof Error ? error.message : 'Unknown error',
+        message,
       },
       500
     );
