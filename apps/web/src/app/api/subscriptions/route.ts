@@ -19,9 +19,10 @@
 
 import { NextResponse, type NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { issueBillingKey, cancelPayment, TossPaymentError } from '@/lib/payments/toss';
+import { issueBillingKey, TossPaymentError } from '@/lib/payments/toss';
 import { z } from 'zod';
 import { logger } from '@/lib/utils/logger';
+import type { Tables } from '@/lib/supabase/types';
 
 const SubscribeSchema = z.object({
   authKey: z.string().min(1),
@@ -43,17 +44,19 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { data: proProfile } = await supabase
+    const { data: proProfileRaw } = await supabase
       .from('pro_profiles')
-      .select('id')
+      .select('id, user_id')
       .eq('user_id', user.id)
       .single();
+
+    const proProfile = proProfileRaw as Tables<'pro_profiles'> | null;
 
     if (!proProfile) {
       return NextResponse.json({ error: 'Pro profile not found' }, { status: 403 });
     }
 
-    const { data: subscription } = await supabase
+    const { data: subscriptionRaw } = await supabase
       .from('subscriptions')
       .select('*')
       .eq('pro_id', proProfile.id)
@@ -62,22 +65,24 @@ export async function GET(request: NextRequest) {
       .limit(1)
       .maybeSingle();
 
-    // Get billing history
-    let billingHistory = [];
-    if (subscription) {
-      const { data: payments } = await supabase
-        .from('payments')
-        .select('id, order_id, amount, status, approved_at, receipt_url')
-        .eq('pro_id', proProfile.id)
-        .eq('type', 'subscription')
-        .order('approved_at', { ascending: false })
-        .limit(12); // Last 12 months
+    const subscription = subscriptionRaw as Tables<'subscriptions'> | null;
 
-      billingHistory = payments ?? [];
+    // Get billing history — payments uses user_id
+    let billingHistory: Tables<'payments'>[] = [];
+    if (subscription) {
+      const { data: paymentsRaw } = await supabase
+        .from('payments')
+        .select('id, amount, status, created_at, type, metadata')
+        .eq('user_id', proProfile.user_id)
+        .eq('type', 'subscription')
+        .order('created_at', { ascending: false })
+        .limit(12);
+
+      billingHistory = (paymentsRaw as Tables<'payments'>[] | null) ?? [];
     }
 
     return NextResponse.json({
-      data: subscription ?? { plan_id: 'starter', status: 'free' },
+      data: subscription ?? { tier: 'starter', status: 'free' },
       billing_history: billingHistory,
     });
   } catch (err) {
@@ -95,7 +100,6 @@ function calculateProratedAmount(
   const currentPrice = PLAN_PRICES[currentPlan] ?? 0;
   const newPrice = PLAN_PRICES[newPlan] ?? 0;
 
-  // Calculate days used
   const now = new Date();
   const totalDays = Math.ceil(
     (periodEnd.getTime() - periodStart.getTime()) / (1000 * 60 * 60 * 24)
@@ -105,7 +109,6 @@ function calculateProratedAmount(
   );
   const daysRemaining = Math.max(0, totalDays - daysUsed);
 
-  // Proration: credit for current plan + charge for new plan
   const creditAmount = (currentPrice / totalDays) * daysUsed;
   const chargeAmount = (newPrice / totalDays) * daysRemaining;
 
@@ -131,35 +134,39 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { data: proProfile } = await supabase
+    // pro_profiles schema: id, created_at, display_name, plg_coupons_remaining, specialty, studio_name, tier, updated_at, user_id
+    const { data: proProfileRaw } = await supabase
       .from('pro_profiles')
-      .select('id, plan')
+      .select('id, tier')
       .eq('user_id', user.id)
       .single();
+
+    const proProfile = proProfileRaw as Tables<'pro_profiles'> | null;
 
     if (!proProfile) {
       return NextResponse.json({ error: 'Pro profile not found' }, { status: 403 });
     }
 
     // Check for existing subscription
-    const { data: existingSubscription } = await supabase
+    const { data: existingSubscriptionRaw } = await supabase
       .from('subscriptions')
       .select('*')
       .eq('pro_id', proProfile.id)
       .eq('status', 'active')
-      .single();
+      .maybeSingle();
 
-    // Validate plan transitions
+    const existingSubscription = existingSubscriptionRaw as Tables<'subscriptions'> | null;
+
+    // Validate plan transitions — use tier instead of plan_id
     if (existingSubscription) {
-      const currentPlanPrice = PLAN_PRICES[existingSubscription.plan_id] ?? 0;
+      const currentPlanPrice = PLAN_PRICES[existingSubscription.tier] ?? 0;
       const newPlanPrice = PLAN_PRICES[parsed.data.plan_id] ?? 0;
 
-      // Prevent downgrade during active period (must wait until period end)
       if (newPlanPrice < currentPlanPrice) {
         const periodEnd = new Date(existingSubscription.current_period_end);
         logger.warn('Downgrade attempted mid-cycle', {
           proId: proProfile.id,
-          from: existingSubscription.plan_id,
+          from: existingSubscription.tier,
           to: parsed.data.plan_id,
           periodEnd: periodEnd.toISOString(),
         });
@@ -188,55 +195,54 @@ export async function POST(request: NextRequest) {
       throw err;
     }
 
-    // Calculate dates and proration
     const now = new Date();
     const periodEnd = new Date();
     periodEnd.setMonth(periodEnd.getMonth() + 1);
 
     let proratedAmount = 0;
-    if (existingSubscription && existingSubscription.plan_id !== parsed.data.plan_id) {
+    if (existingSubscription && existingSubscription.tier !== parsed.data.plan_id) {
       proratedAmount = calculateProratedAmount(
-        existingSubscription.plan_id,
+        existingSubscription.tier,
         parsed.data.plan_id,
         new Date(existingSubscription.current_period_start),
         new Date(existingSubscription.current_period_end)
       );
     }
 
-    // Upsert subscription
-    const { data: subscription, error: upsertError } = await supabase
+    // Upsert subscription — subscriptions schema: id, created_at, current_period_end,
+    // current_period_start, pro_id, status, tier, toss_billing_key, updated_at
+    const { data: subscriptionRaw, error: upsertError } = await (supabase as any)
       .from('subscriptions')
       .upsert(
         {
           pro_id: proProfile.id,
-          plan_id: parsed.data.plan_id,
+          tier: parsed.data.plan_id,
           status: 'active',
-          billing_key: billingResult.billingKey,
-          customer_key: billingResult.customerKey,
-          card_info: billingResult.card ?? null,
+          toss_billing_key: billingResult.billingKey ?? null,
           current_period_start: now.toISOString(),
           current_period_end: periodEnd.toISOString(),
-          prorated_amount: proratedAmount || null,
         },
         { onConflict: 'pro_id' }
       )
       .select()
       .single();
 
+    const subscription = subscriptionRaw as Tables<'subscriptions'> | null;
+
     if (upsertError) {
       logger.error('Subscription upsert failed', { error: upsertError.message });
       return NextResponse.json({ error: 'Failed to save subscription' }, { status: 500 });
     }
 
-    // Update pro profile plan
-    await supabase
+    // Update pro profile tier
+    await (supabase as any)
       .from('pro_profiles')
-      .update({ plan: parsed.data.plan_id })
+      .update({ tier: parsed.data.plan_id })
       .eq('id', proProfile.id);
 
     logger.info('Subscription created', {
       proId: proProfile.id,
-      planId: parsed.data.plan_id,
+      tier: parsed.data.plan_id,
       proratedAmount,
     });
 
@@ -259,35 +265,35 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { data: proProfile } = await supabase
+    const { data: proProfileRaw } = await supabase
       .from('pro_profiles')
       .select('id')
       .eq('user_id', user.id)
       .single();
 
+    const proProfile = proProfileRaw as Tables<'pro_profiles'> | null;
+
     if (!proProfile) {
       return NextResponse.json({ error: 'Pro profile not found' }, { status: 403 });
     }
 
-    const { data: subscription } = await supabase
+    const { data: subscriptionRaw } = await supabase
       .from('subscriptions')
       .select('*')
       .eq('pro_id', proProfile.id)
       .in('status', ['active', 'past_due'])
-      .single();
+      .maybeSingle();
+
+    const subscription = subscriptionRaw as Tables<'subscriptions'> | null;
 
     if (!subscription) {
       return NextResponse.json({ error: 'No active subscription' }, { status: 404 });
     }
 
-    // Cancel at period end (don't immediately revoke access)
-    const { error: cancelError } = await supabase
+    // Cancel subscription — only update status (cancel_at_period_end/canceled_at not in schema)
+    const { error: cancelError } = await (supabase as any)
       .from('subscriptions')
-      .update({
-        status: 'canceled',
-        cancel_at_period_end: true,
-        canceled_at: new Date().toISOString(),
-      })
+      .update({ status: 'canceled' })
       .eq('id', subscription.id);
 
     if (cancelError) {
@@ -295,12 +301,11 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to cancel' }, { status: 500 });
     }
 
-    const periodEnd = new Date(subscription.current_period_end);
-    const formattedDate = periodEnd.toLocaleDateString('ko-KR');
+    const periodEndDate = new Date(subscription.current_period_end);
+    const formattedDate = periodEndDate.toLocaleDateString('ko-KR');
 
-    // Check if can be reactivated before period end
     const now = new Date();
-    const canReactivate = periodEnd > now;
+    const canReactivate = periodEndDate > now;
 
     logger.info('Subscription canceled', {
       proId: proProfile.id,
@@ -312,8 +317,8 @@ export async function DELETE(request: NextRequest) {
       data: {
         status: 'canceled',
         effective_end: subscription.current_period_end,
-        access_ends_at: periodEnd.toISOString(),
-        can_reactivate_until: canReactivate ? periodEnd.toISOString() : null,
+        access_ends_at: periodEndDate.toISOString(),
+        can_reactivate_until: canReactivate ? periodEndDate.toISOString() : null,
         message: `구독이 해지되었습니다. ${formattedDate}까지 이용 가능합니다.`,
       },
     });
@@ -343,23 +348,27 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    const { data: proProfile } = await supabase
+    const { data: proProfileRaw } = await supabase
       .from('pro_profiles')
       .select('id')
       .eq('user_id', user.id)
       .single();
 
+    const proProfile = proProfileRaw as Tables<'pro_profiles'> | null;
+
     if (!proProfile) {
       return NextResponse.json({ error: 'Pro profile not found' }, { status: 403 });
     }
 
-    const { data: subscription } = await supabase
+    // Find a canceled subscription still within its period
+    const { data: subscriptionRaw } = await supabase
       .from('subscriptions')
       .select('*')
       .eq('pro_id', proProfile.id)
       .eq('status', 'canceled')
-      .eq('cancel_at_period_end', true)
-      .single();
+      .maybeSingle();
+
+    const subscription = subscriptionRaw as Tables<'subscriptions'> | null;
 
     if (!subscription) {
       return NextResponse.json(
@@ -369,24 +378,18 @@ export async function PATCH(request: NextRequest) {
     }
 
     const now = new Date();
-    const periodEnd = new Date(subscription.current_period_end);
+    const periodEndDate = new Date(subscription.current_period_end);
 
-    // Check if still within grace period
-    if (periodEnd <= now) {
+    if (periodEndDate <= now) {
       return NextResponse.json(
         { error: 'Cannot reactivate after period end', message: 'Subscription period has ended' },
         { status: 400 }
       );
     }
 
-    // Reactivate subscription
-    const { error: reactivateError } = await supabase
+    const { error: reactivateError } = await (supabase as any)
       .from('subscriptions')
-      .update({
-        status: 'active',
-        cancel_at_period_end: false,
-        canceled_at: null,
-      })
+      .update({ status: 'active' })
       .eq('id', subscription.id);
 
     if (reactivateError) {
@@ -396,13 +399,13 @@ export async function PATCH(request: NextRequest) {
 
     logger.info('Subscription reactivated', {
       proId: proProfile.id,
-      planId: subscription.plan_id,
+      tier: subscription.tier,
     });
 
     return NextResponse.json({
       data: {
         status: 'active',
-        plan_id: subscription.plan_id,
+        tier: subscription.tier,
         message: '구독이 재활성화되었습니다.',
       },
     });

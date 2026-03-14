@@ -291,10 +291,10 @@ export default function CouponsPage() {
               onClick={() => handlePurchaseBundle(idx)}
               className={cn(
                 'card p-3 text-center relative transition-all hover:shadow-md',
-                bundle?.popular && 'ring-2 ring-brand-primary'
+                ('popular' in bundle) && (bundle as any).popular && 'ring-2 ring-brand-primary'
               )}
             >
-              {bundle?.popular && (
+              {('popular' in bundle) && (bundle as any).popular && (
                 <span className="absolute -top-2 left-1/2 -translate-x-1/2 bg-brand-primary text-white text-[10px] px-2 py-0.5 rounded-full">
                   인기
                 </span>
@@ -468,7 +468,7 @@ function CouponCard({
     },
   };
 
-  const config = statusConfig[coupon.status] ?? statusConfig.expired;
+  const config = statusConfig[coupon.status] ?? statusConfig['expired']!;
 
   // Check if expiring soon (within 7 days)
   const expiringSoon =

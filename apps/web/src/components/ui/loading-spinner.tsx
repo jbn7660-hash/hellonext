@@ -24,7 +24,7 @@ interface LoadingSpinnerProps {
   /** Size of the spinner */
   size?: 'sm' | 'md' | 'lg';
   /** Spinner variant */
-  variant?: 'ring' | 'dots' | 'bars' | 'pulse' | 'golf-ball';
+  variant?: 'ring' | 'dots' | 'bars' | 'pulse' | 'golf-ball' | 'progress';
   /** Optional label text displayed below spinner */
   label?: string;
   /** For progress variant: 0-100 */

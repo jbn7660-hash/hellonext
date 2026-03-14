@@ -12,6 +12,23 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { logger } from '@/lib/utils/logger';
+import type { Tables } from '@/lib/supabase/types';
+
+// member_profiles schema: id, created_at, display_name, is_premium, premium_expires_at, updated_at, user_id
+// pro_member_links schema: id, created_at, invite_code, member_id, pro_id, status, updated_at
+// NO avatar_url, handicap, golf_experience_months on member_profiles
+// NO is_active on pro_member_links — use status='active'
+
+type MemberProfileJoin = {
+  id: string;
+  display_name: string;
+};
+
+type ProMemberLinkWithMember = {
+  member_id: string | null;
+  created_at: string;
+  member_profiles: MemberProfileJoin | null;
+};
 
 export async function GET(request: NextRequest) {
   try {
@@ -22,34 +39,32 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get pro profile
-    const { data: proProfile, error: profileError } = await supabase
+    const { data: proProfileRaw, error: profileError } = await supabase
       .from('pro_profiles')
       .select('id')
       .eq('user_id', user.id)
       .single();
+
+    const proProfile = proProfileRaw as Tables<'pro_profiles'> | null;
 
     if (profileError || !proProfile) {
       logger.warn('Pro profile not found', { userId: user.id });
       return NextResponse.json({ error: 'Pro profile not found' }, { status: 403 });
     }
 
-    // Fetch linked members with latest activity
-    const { data, error } = await supabase
+    // Fetch linked members — select only schema-valid columns
+    const { data: dataRaw, error } = await supabase
       .from('pro_member_links')
       .select(`
         member_id,
         created_at,
         member_profiles!inner(
           id,
-          display_name,
-          avatar_url,
-          handicap,
-          golf_experience_months
+          display_name
         )
       `)
       .eq('pro_id', proProfile.id)
-      .eq('is_active', true)
+      .eq('status', 'active')
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -57,13 +72,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch members' }, { status: 500 });
     }
 
-    const memberData = data ?? [];
+    const memberData = (dataRaw ?? []) as unknown as ProMemberLinkWithMember[];
 
-    // Batch-optimized: collect all member IDs, then run 3 aggregate queries
-    const memberIds = memberData.map((link) => {
-      const mp = link.member_profiles as { id: string };
-      return mp.id;
-    });
+    const memberIds = memberData
+      .map((link) => link.member_id)
+      .filter((id): id is string => id !== null);
 
     if (memberIds.length === 0) {
       logger.info('No members found', { userId: user.id, proId: proProfile.id });
@@ -74,9 +87,7 @@ export async function GET(request: NextRequest) {
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     const thirtyDaysAgoStr = thirtyDaysAgo.toISOString();
 
-    // 3 parallel batch queries instead of N×3 sequential queries (performance optimization)
     const [reportCounts, feelChecks, memoCounts] = await Promise.all([
-      // Batch: report counts per member (last 30 days)
       supabase
         .from('reports')
         .select('member_id')
@@ -84,14 +95,12 @@ export async function GET(request: NextRequest) {
         .in('member_id', memberIds)
         .gte('created_at', thirtyDaysAgoStr),
 
-      // Batch: latest feel checks per member (all at once)
       supabase
         .from('feel_checks')
         .select('member_id, feeling, created_at')
         .in('member_id', memberIds)
         .order('created_at', { ascending: false }),
 
-      // Batch: draft memo counts per member
       supabase
         .from('voice_memos')
         .select('member_id')
@@ -100,46 +109,40 @@ export async function GET(request: NextRequest) {
         .eq('status', 'draft'),
     ]);
 
-    // Build lookup maps from batch results
     const reportCountMap = new Map<string, number>();
-    (reportCounts.data ?? []).forEach((r) => {
+    ((reportCounts.data ?? []) as { member_id: string }[]).forEach((r) => {
       reportCountMap.set(r.member_id, (reportCountMap.get(r.member_id) ?? 0) + 1);
     });
 
     const latestFeelMap = new Map<string, { feeling: string; created_at: string }>();
-    (feelChecks.data ?? []).forEach((fc) => {
+    ((feelChecks.data ?? []) as Tables<'feel_checks'>[]).forEach((fc) => {
       if (!latestFeelMap.has(fc.member_id)) {
         latestFeelMap.set(fc.member_id, { feeling: fc.feeling, created_at: fc.created_at });
       }
     });
 
     const memoCountMap = new Map<string, number>();
-    (memoCounts.data ?? []).forEach((m) => {
-      memoCountMap.set(m.member_id, (memoCountMap.get(m.member_id) ?? 0) + 1);
+    ((memoCounts.data ?? []) as Tables<'voice_memos'>[]).forEach((m) => {
+      if (m.member_id) {
+        memoCountMap.set(m.member_id, (memoCountMap.get(m.member_id) ?? 0) + 1);
+      }
     });
 
-    // Map results
-    const members = memberData.map((link) => {
-      const member = link.member_profiles as {
-        id: string;
-        display_name: string;
-        avatar_url: string | null;
-        handicap: number | null;
-        golf_experience_months: number | null;
-      };
+    const members = memberData
+      .filter((link) => link.member_id !== null && link.member_profiles !== null)
+      .map((link) => {
+        const member = link.member_profiles!;
+        const memberId = link.member_id!;
 
-      return {
-        id: member.id,
-        display_name: member.display_name,
-        avatar_url: member.avatar_url,
-        handicap: member.handicap,
-        golf_experience_months: member.golf_experience_months,
-        linked_at: link.created_at,
-        recent_report_count: reportCountMap.get(member.id) ?? 0,
-        latest_feel_check: latestFeelMap.get(member.id) ?? null,
-        pending_memo_count: memoCountMap.get(member.id) ?? 0,
-      };
-    });
+        return {
+          id: member.id,
+          display_name: member.display_name,
+          linked_at: link.created_at,
+          recent_report_count: reportCountMap.get(memberId) ?? 0,
+          latest_feel_check: latestFeelMap.get(memberId) ?? null,
+          pending_memo_count: memoCountMap.get(memberId) ?? 0,
+        };
+      });
 
     logger.info('Members fetched', { userId: user.id, count: members.length });
 

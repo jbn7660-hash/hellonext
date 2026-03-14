@@ -10,6 +10,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { logger } from '@/lib/utils/logger';
+import type { Tables } from '@/lib/supabase/types';
 
 export async function GET(request: NextRequest) {
   try {
@@ -43,24 +44,26 @@ export async function GET(request: NextRequest) {
     const startISO = startDate.toISOString();
 
     // Get member profile
-    const { data: memberProfile } = await supabase
+    const { data: memberProfileRaw } = await supabase
       .from('member_profiles')
       .select('id')
       .eq('user_id', user.id)
       .maybeSingle();
+    const memberProfile = memberProfileRaw as Pick<Tables<'member_profiles'>, 'id'> | null;
 
     if (!memberProfile) {
       return NextResponse.json({ error: 'Member profile not found' }, { status: 403 });
     }
 
     // Fetch swing videos in range (capped at 2000 for performance)
-    const { data: swings, count: swingCount } = await supabase
+    const { data: swingsRaw, count: swingCount } = await supabase
       .from('swing_videos')
-      .select('id, created_at, status', { count: 'exact' })
+      .select('id, created_at', { count: 'exact' })
       .eq('member_id', memberProfile.id)
       .gte('created_at', startISO)
       .order('created_at', { ascending: false })
       .limit(2000);
+    const swings = swingsRaw as Array<Pick<Tables<'swing_videos'>, 'id' | 'created_at'>> | null;
 
     const totalSwings = swingCount ?? swings?.length ?? 0;
 
@@ -87,51 +90,39 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Feel accuracy rate — calculate based on feel vs actual observations
-    const { data: feelChecks } = await supabase
+    // Feel accuracy rate — calculate based on feel_accuracy score on feel_checks
+    const { data: feelChecksRaw } = await supabase
       .from('feel_checks')
-      .select('id, feeling, swing_video_id')
+      .select('id, feeling, video_id, feel_accuracy')
       .eq('member_id', memberProfile.id)
       .gte('created_at', startISO);
+    const feelChecks = feelChecksRaw as Array<Pick<Tables<'feel_checks'>, 'id' | 'feeling' | 'video_id' | 'feel_accuracy'>> | null;
 
     let feelAccuracyRate = 0;
 
     if (feelChecks && feelChecks.length > 0) {
-      // Fetch AI observations for these swings to compare feel vs actual
-      const videoIds = (feelChecks ?? [])
-        .map((fc) => fc.swing_video_id)
-        .filter(Boolean);
-
-      if (videoIds.length > 0) {
-        const { data: observations } = await supabase
-          .from('ai_observations')
-          .select('id, feel_accuracy_note')
-          .in('swing_video_id', videoIds);
-
-        if (observations && observations.length > 0) {
-          // Simplified: Count matches where feel_accuracy_note is positive
-          const matchCount = observations.filter((obs) =>
-            obs.feel_accuracy_note?.toLowerCase().includes('일치') ||
-            obs.feel_accuracy_note?.toLowerCase().includes('정확')
-          ).length;
-          feelAccuracyRate = Math.round((matchCount / observations.length) * 100);
-        }
+      // Calculate average feel_accuracy score (0-100 scale)
+      const validChecks = feelChecks.filter((fc) => fc.feel_accuracy !== null);
+      if (validChecks.length > 0) {
+        const totalAccuracy = validChecks.reduce((sum, fc) => sum + (fc.feel_accuracy ?? 0), 0);
+        feelAccuracyRate = Math.round(totalAccuracy / validChecks.length);
       }
     }
 
-    // Most common error patterns from AI observations
-    const { data: observations } = await supabase
+    // Most common error patterns from AI observations (visible_tags contains error pattern data)
+    const { data: observationsRaw } = await supabase
       .from('ai_observations')
-      .select('observations')
+      .select('id, visible_tags')
       .eq('member_id', memberProfile.id)
       .gte('created_at', startISO);
+    const observations = observationsRaw as Array<Pick<Tables<'ai_observations'>, 'id' | 'visible_tags'>> | null;
 
     const errorCounts: Record<string, number> = {};
     (observations ?? []).forEach((obs) => {
-      const obsArray = obs.observations ?? [];
-      if (Array.isArray(obsArray)) {
-        obsArray.forEach((o: Record<string, unknown>) => {
-          const code = o.error_pattern_code as string | null;
+      const tagsArray = obs.visible_tags ?? [];
+      if (Array.isArray(tagsArray)) {
+        (tagsArray as Array<Record<string, unknown>>).forEach((o) => {
+          const code = o['error_pattern_code'] as string | null;
           if (code && code !== 'null') {
             errorCounts[code] = (errorCounts[code] ?? 0) + 1;
           }
@@ -163,7 +154,7 @@ export async function GET(request: NextRequest) {
       .filter((pt) => pt.recent_score > 0);
 
     // Recent reports linked to this member
-    const { data: reports } = await supabase
+    const { data: reportsRaw } = await supabase
       .from('reports')
       .select(
         `id,
@@ -176,15 +167,19 @@ export async function GET(request: NextRequest) {
       .eq('status', 'published')
       .order('created_at', { ascending: false })
       .limit(5);
+    type ReportWithPro = Pick<Tables<'reports'>, 'id' | 'title' | 'created_at' | 'status'> & {
+      pro_profiles: { display_name: string } | Array<{ display_name: string }> | null;
+    };
+    const reports = reportsRaw as ReportWithPro[] | null;
 
-    const recentReports = (reports ?? []).map((r: Record<string, unknown>) => ({
-      id: r.id as string,
-      title: (r.title as string) ?? '레슨 리포트',
-      date: r.created_at as string,
+    const recentReports = (reports ?? []).map((r) => ({
+      id: r.id,
+      title: r.title ?? '레슨 리포트',
+      date: r.created_at,
       pro_name:
         Array.isArray(r.pro_profiles) && r.pro_profiles.length > 0
           ? ((r.pro_profiles[0] as { display_name: string }).display_name ?? '프로')
-          : '프로',
+          : (r.pro_profiles as { display_name: string } | null)?.display_name ?? '프로',
     }));
 
     return NextResponse.json({

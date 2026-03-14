@@ -85,7 +85,7 @@ export function useVoiceRecorder(): VoiceRecorderState & VoiceRecorderActions {
 
         let sum = 0;
         for (let i = 0; i < dataArray.length; i++) {
-          sum += dataArray[i];
+          sum += dataArray[i] ?? 0;
         }
         const average = sum / dataArray.length;
         const level = Math.min(100, Math.round((average / 255) * 100));
@@ -229,7 +229,7 @@ export function useVoiceRecorder(): VoiceRecorderState & VoiceRecorderActions {
           analyserRef.current.getByteFrequencyData(dataArray);
           let sum = 0;
           for (let i = 0; i < dataArray.length; i++) {
-            sum += dataArray[i];
+            sum += dataArray[i] ?? 0;
           }
           const average = sum / dataArray.length;
           const level = Math.min(100, Math.round((average / 255) * 100));

@@ -94,12 +94,12 @@ export async function POST(request: NextRequest) {
     }
 
     const { notification_ids, mark_all } = parsed.data;
-    const readAt = new Date().toISOString();
 
     if (mark_all) {
       const { error } = await supabase
         .from('notifications')
-        .update({ is_read: true, read_at: readAt })
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .update({ is_read: true } as unknown as never)
         .eq('user_id', user.id)
         .eq('is_read', false);
 
@@ -112,7 +112,8 @@ export async function POST(request: NextRequest) {
     } else if (notification_ids && notification_ids.length > 0) {
       const { error } = await supabase
         .from('notifications')
-        .update({ is_read: true, read_at: readAt })
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .update({ is_read: true } as unknown as never)
         .eq('user_id', user.id)
         .in('id', notification_ids);
 

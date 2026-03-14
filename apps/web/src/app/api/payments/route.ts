@@ -5,12 +5,12 @@
  * GET  /api/payments — List payment history with filtering
  *
  * Features:
- *  - Duplicate prevention (orderId uniqueness check)
+ *  - Duplicate prevention (toss_payment_key uniqueness check)
  *  - Amount verification against expected bundle/plan price
  *  - Metadata enrichment (user agent, IP, timestamp)
  *  - Rate limiting (max 5 attempts per user per hour)
  *  - Error recovery logging for manual reconciliation
- *  - GET: date range filtering, orderId search, total summary
+ *  - GET: date range filtering, total summary
  *
  * @route /api/payments
  * @feature F-008
@@ -21,8 +21,10 @@ import { createClient } from '@/lib/supabase/server';
 import { confirmPayment, TossPaymentError, COUPON_BUNDLES, SUBSCRIPTION_PLANS } from '@/lib/payments/toss';
 import { z } from 'zod';
 import { logger } from '@/lib/utils/logger';
+import type { Tables } from '@/lib/supabase/types';
 
-// Bundle and subscription prices for validation
+// payments schema: id, amount, created_at, metadata, status, toss_payment_key, type, user_id
+
 const BUNDLE_PRICES: Record<number, number> = {
   5: 30000,
   10: 50000,
@@ -78,7 +80,7 @@ export async function POST(request: NextRequest) {
     const { count: recentAttempts } = await supabase
       .from('payments')
       .select('*', { count: 'exact', head: true })
-      .eq('pro_id', user.id)
+      .eq('user_id', user.id)
       .gte('created_at', oneHourAgo);
 
     if ((recentAttempts ?? 0) >= 5) {
@@ -89,15 +91,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 2. Check for duplicate orderId
+    // 2. Check for duplicate payment key
     const { count: existingPayment } = await supabase
       .from('payments')
       .select('*', { count: 'exact', head: true })
-      .eq('order_id', orderId)
+      .eq('toss_payment_key', paymentKey)
       .eq('status', 'DONE');
 
     if ((existingPayment ?? 0) > 0) {
-      logger.warn('Duplicate payment orderId', { orderId, userId: user.id });
+      logger.warn('Duplicate payment key', { paymentKey, userId: user.id });
       return NextResponse.json(
         { error: 'This order has already been completed' },
         { status: 409 }
@@ -126,12 +128,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 4. Get pro profile for metadata enrichment
-    const { data: proProfile } = await supabase
+    // 4. Get pro profile
+    const { data: proProfileRaw } = await supabase
       .from('pro_profiles')
       .select('id')
       .eq('user_id', user.id)
       .single();
+
+    const proProfile = proProfileRaw as Tables<'pro_profiles'> | null;
 
     if (!proProfile) {
       return NextResponse.json({ error: 'Pro profile not found' }, { status: 403 });
@@ -159,47 +163,45 @@ export async function POST(request: NextRequest) {
       throw err;
     }
 
-    // 6. Enrich metadata with request context
+    // 6. Enrich metadata
     const enrichedMetadata = {
       ...(metadata ?? {}),
+      order_id: tossResult.orderId,
       user_agent: request.headers.get('user-agent') ?? '',
       ip: getClientIp(request),
       timestamp: new Date().toISOString(),
     };
 
-    // 7. Record payment in DB
-    const { data: payment, error: insertError } = await supabase
+    // 7. Record payment — only schema-valid columns: id, amount, created_at, metadata, status, toss_payment_key, type, user_id
+    const { data: paymentRaw, error: insertError } = await (supabase as any)
       .from('payments')
       .insert({
-        pro_id: proProfile.id,
-        payment_key: tossResult.paymentKey,
-        order_id: tossResult.orderId,
+        user_id: user.id,
+        toss_payment_key: tossResult.paymentKey,
         amount: tossResult.totalAmount,
         status: tossResult.status,
-        method: tossResult.method,
         type,
         metadata: enrichedMetadata,
-        approved_at: tossResult.approvedAt,
-        receipt_url: tossResult.receipt?.url ?? null,
       })
       .select()
       .single();
 
-    if (insertError) {
+    const payment = paymentRaw as Tables<'payments'> | null;
+
+    if (insertError || !payment) {
       logger.error('Payment record insert failed', {
-        error: insertError.message,
+        error: insertError?.message,
         orderId,
         userId: user.id,
       });
-      // Payment was confirmed with Toss but DB insert failed — log for reconciliation
-      // Create a reconciliation record
-      await supabase
+      // payment_reconciliation is not in typed schema — use any cast
+      await (supabase as any)
         .from('payment_reconciliation')
         .insert({
           order_id: orderId,
           payment_key: tossResult.paymentKey,
           toss_status: tossResult.status,
-          db_error: insertError.message,
+          db_error: insertError?.message,
           metadata: enrichedMetadata,
           created_at: new Date().toISOString(),
         });
@@ -216,8 +218,8 @@ export async function POST(request: NextRequest) {
         body: {
           action: 'generate',
           quantity: metadata.bundle_quantity,
-          source: 'purchased_bundle',
-          bundle_order_id: payment.id,
+          type: 'purchased',
+          bundle_payment_id: payment.id,
         },
       });
 
@@ -226,7 +228,6 @@ export async function POST(request: NextRequest) {
           paymentId: payment.id,
           error: couponError,
         });
-        // Don't fail the response — coupons can be generated manually
       }
     }
 
@@ -253,11 +254,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { data: proProfile } = await supabase
+    const { data: proProfileRaw } = await supabase
       .from('pro_profiles')
       .select('id')
       .eq('user_id', user.id)
       .single();
+
+    const proProfile = proProfileRaw as Tables<'pro_profiles'> | null;
 
     if (!proProfile) {
       return NextResponse.json({ error: 'Pro profile not found' }, { status: 403 });
@@ -267,27 +270,20 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') ?? '1', 10);
     const limit = parseInt(searchParams.get('limit') ?? '20', 10);
     const offset = (page - 1) * limit;
-    const orderId = searchParams.get('order_id');
     const startDate = searchParams.get('start_date');
     const endDate = searchParams.get('end_date');
-    const type = searchParams.get('type'); // 'coupon_bundle' or 'subscription'
+    const type = searchParams.get('type');
 
+    // payments uses user_id, not pro_id
     let query = supabase
       .from('payments')
       .select('*', { count: 'exact' })
-      .eq('pro_id', proProfile.id);
+      .eq('user_id', user.id);
 
-    // Filter by orderId (search)
-    if (orderId) {
-      query = query.eq('order_id', orderId);
-    }
-
-    // Filter by type
     if (type) {
       query = query.eq('type', type);
     }
 
-    // Filter by date range
     if (startDate) {
       query = query.gte('created_at', startDate);
     }
@@ -295,38 +291,34 @@ export async function GET(request: NextRequest) {
       query = query.lte('created_at', endDate);
     }
 
-    // Order and pagination
-    const { data, count, error } = await query
+    const { data: dataRaw, count, error } = await query
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);
+
+    const data = dataRaw as Tables<'payments'>[] | null;
 
     if (error) {
       logger.error('Payments fetch failed', { error: error.message });
       return NextResponse.json({ error: 'Failed to fetch payments' }, { status: 500 });
     }
 
-    // Calculate summary statistics
-    let summary = null;
-    if (!orderId) {
-      // Only calculate summary for full list, not filtered searches
-      const { data: allPayments } = await supabase
-        .from('payments')
-        .select('amount, status, type')
-        .eq('pro_id', proProfile.id)
-        .eq('status', 'DONE');
+    // Summary statistics
+    const { data: allPaymentsRaw } = await supabase
+      .from('payments')
+      .select('amount, status, type')
+      .eq('user_id', user.id)
+      .eq('status', 'DONE');
 
-      if (allPayments) {
-        const total = allPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
-        summary = {
-          total_amount: total,
-          total_completed: allPayments.length,
-          by_type: {
-            coupon_bundle: allPayments.filter(p => p.type === 'coupon_bundle').length,
-            subscription: allPayments.filter(p => p.type === 'subscription').length,
-          },
-        };
-      }
-    }
+    const allPayments = (allPaymentsRaw as Tables<'payments'>[] | null) ?? [];
+    const total = allPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
+    const summary = {
+      total_amount: total,
+      total_completed: allPayments.length,
+      by_type: {
+        coupon_bundle: allPayments.filter(p => p.type === 'coupon_bundle').length,
+        subscription: allPayments.filter(p => p.type === 'subscription').length,
+      },
+    };
 
     return NextResponse.json({
       data,

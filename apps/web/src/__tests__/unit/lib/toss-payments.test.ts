@@ -113,8 +113,8 @@ describe('TossPayments Library', () => {
 
       await confirmPayment({ paymentKey: 'pk', orderId: 'o', amount: 1000 });
 
-      const callArgs = mockFetch.mock.calls[0];
-      const headers = callArgs[1].headers;
+      const callArgs = mockFetch.mock.calls[0]!;
+      const headers = callArgs[1]!.headers;
       const authHeader = headers['Authorization'] || headers['authorization'];
 
       expect(authHeader).toContain('Basic ');

@@ -14,6 +14,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { logger } from '@/lib/utils/logger';
+import type { Tables } from '@/lib/supabase/types';
 
 interface CausalAnalysisRequest {
   session_id: string; // UUID format
@@ -35,11 +36,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify pro role
-    const { data: proProfile, error: profileError } = await supabase
+    const { data: proProfileRaw, error: profileError } = await supabase
       .from('pro_profiles')
       .select('id')
       .eq('user_id', user.id)
       .single();
+    const proProfile = proProfileRaw as Pick<Tables<'pro_profiles'>, 'id'> | null;
 
     if (profileError || !proProfile) {
       logger.warn('Pro profile not found for causal-analysis', { userId: user.id });
@@ -148,11 +150,12 @@ export async function GET(request: NextRequest) {
     logger.info('Fetching existing analysis', { userId: user.id, sessionId });
 
     // Fetch coaching decision for this session
-    const { data: decision, error: decisionError } = await supabase
+    const { data: decisionRaw, error: decisionError } = await supabase
       .from('coaching_decisions')
       .select('id, primary_fix, auto_draft, coach_edited, data_quality_tier, created_at, updated_at')
       .eq('session_id', sessionId)
       .single();
+    const decision = decisionRaw as Tables<'coaching_decisions'> | null;
 
     if (decisionError && decisionError.code !== 'PGRST116') {
       logger.error('Failed to fetch coaching decision', {

@@ -46,9 +46,9 @@ function createConfetti() {
     confetti.style.height = '8px';
     confetti.style.left = Math.random() * 100 + '%';
     confetti.style.top = '-10px';
-    confetti.style.backgroundColor = ['#FF6B6B', '#4ECDC4', '#FFE66D', '#95E1D3', '#C7CEEA'][
+    confetti.style.backgroundColor = (['#FF6B6B', '#4ECDC4', '#FFE66D', '#95E1D3', '#C7CEEA'] as string[])[
       Math.floor(Math.random() * 5)
-    ];
+    ] ?? '#FF6B6B';
     confetti.style.borderRadius = '50%';
     confetti.style.pointerEvents = 'none';
     confetti.style.zIndex = '9999';

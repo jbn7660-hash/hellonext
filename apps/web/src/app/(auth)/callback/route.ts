@@ -64,11 +64,13 @@ export async function GET(request: NextRequest) {
     }
 
     // Check if user has a pro profile
-    const { data: proProfile, error: proError } = await supabase
+    const { data: proProfileRaw, error: proError } = await supabase
       .from('pro_profiles')
       .select('id, studio_name')
       .eq('user_id', user.id)
       .single();
+
+    const proProfile = proProfileRaw as { id: string; studio_name: string | null } | null;
 
     // Handle query error (not found is ok, it's an error but expected)
     if (proError && proError.code !== 'PGRST116') {
@@ -89,11 +91,13 @@ export async function GET(request: NextRequest) {
     }
 
     // Check if user has a member profile
-    const { data: memberProfile, error: memberError } = await supabase
+    const { data: memberProfileRaw, error: memberError } = await supabase
       .from('member_profiles')
       .select('id')
       .eq('user_id', user.id)
       .single();
+
+    const memberProfile = memberProfileRaw as { id: string } | null;
 
     if (memberError && memberError.code !== 'PGRST116') {
       const loginUrl = new URL('/login', origin);

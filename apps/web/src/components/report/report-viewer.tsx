@@ -298,8 +298,8 @@ export function ReportViewer({ report, mode, onEdit, onPublish, onReadReceipt }:
             <h2 className="text-sm font-semibold text-text-primary mb-3">감지된 에러 패턴</h2>
             <div className="flex flex-wrap gap-2">
               {report.error_tags.map((code) => {
-                const pattern = ERROR_PATTERNS[code];
-                const position = pattern ? SWING_POSITIONS[pattern.position] : null;
+                const pattern = ERROR_PATTERNS.find((p) => p.code === code);
+                const position = pattern ? SWING_POSITIONS.find((p) => p.id === pattern.position) : null;
 
                 return (
                   <div

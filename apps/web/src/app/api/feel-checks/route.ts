@@ -39,22 +39,26 @@ export async function POST(request: NextRequest) {
     }
 
     // Get member profile
-    const { data: memberProfile } = await supabase
+    const { data: memberProfileRaw } = await supabase
       .from('member_profiles')
       .select('id')
       .eq('user_id', user.id)
       .single();
+
+    const memberProfile = memberProfileRaw as { id: string } | null;
 
     if (!memberProfile) {
       return NextResponse.json({ error: 'Member profile not found' }, { status: 403 });
     }
 
     // Verify swing video belongs to this member
-    const { data: videoCheck } = await supabase
+    const { data: videoCheckRaw } = await supabase
       .from('swing_videos')
       .select('id, member_id')
       .eq('id', parsed.data.swing_video_id)
       .maybeSingle();
+
+    const videoCheck = videoCheckRaw as { id: string; member_id: string } | null;
 
     if (!videoCheck || videoCheck.member_id !== memberProfile.id) {
       return NextResponse.json(
@@ -67,12 +71,14 @@ export async function POST(request: NextRequest) {
       .from('feel_checks')
       .insert({
         member_id: memberProfile.id,
-        swing_video_id: parsed.data.swing_video_id,
+        video_id: parsed.data.swing_video_id,
         feeling: parsed.data.feeling,
-        notes: parsed.data.notes ?? null,
-      })
+      } as unknown as never)
       .select('id, feeling, created_at')
       .single();
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const feelCheck = data as any;
 
     if (error) {
       logger.error('Feel check insert failed', { error: error.message });
@@ -80,12 +86,12 @@ export async function POST(request: NextRequest) {
     }
 
     logger.info('Feel check created', {
-      feelCheckId: data.id,
+      feelCheckId: feelCheck?.id,
       videoId: parsed.data.swing_video_id,
       feeling: parsed.data.feeling,
     });
 
-    return NextResponse.json({ data }, { status: 201 });
+    return NextResponse.json({ data: feelCheck }, { status: 201 });
   } catch (err) {
     logger.error('Feel check POST error', { error: err });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -101,11 +107,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { data: memberProfile } = await supabase
+    const { data: memberProfileRaw } = await supabase
       .from('member_profiles')
       .select('id')
       .eq('user_id', user.id)
       .single();
+
+    const memberProfile = memberProfileRaw as { id: string } | null;
 
     if (!memberProfile) {
       return NextResponse.json({ error: 'Member profile not found' }, { status: 403 });
@@ -116,7 +124,7 @@ export async function GET(request: NextRequest) {
 
     const { data, error } = await supabase
       .from('feel_checks')
-      .select('id, feeling, notes, created_at, swing_video_id')
+      .select('id, feeling, created_at, video_id')
       .eq('member_id', memberProfile.id)
       .order('created_at', { ascending: false })
       .limit(limit);
@@ -126,7 +134,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch' }, { status: 500 });
     }
 
-    return NextResponse.json({ data: data ?? [] });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return NextResponse.json({ data: (data as any[]) ?? [] });
   } catch (err) {
     logger.error('Feel checks GET error', { error: err });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

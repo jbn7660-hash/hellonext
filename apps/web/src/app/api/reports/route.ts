@@ -13,6 +13,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { z } from 'zod';
 import { logger } from '@/lib/utils/logger';
+import type { Tables } from '@/lib/supabase/types';
 
 const ListReportsQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
@@ -52,17 +53,19 @@ export async function GET(request: NextRequest) {
     const { page, limit, status, member_id: memberIdFilter } = parsed.data;
 
     // Check user role
-    const { data: memberProfile } = await supabase
+    const { data: memberProfileRaw } = await supabase
       .from('member_profiles')
       .select('id')
       .eq('user_id', user.id)
       .maybeSingle();
+    const memberProfile = memberProfileRaw as Pick<Tables<'member_profiles'>, 'id'> | null;
 
-    const { data: proProfile } = await supabase
+    const { data: proProfileRaw } = await supabase
       .from('pro_profiles')
       .select('id')
       .eq('user_id', user.id)
       .maybeSingle();
+    const proProfile = proProfileRaw as Pick<Tables<'pro_profiles'>, 'id'> | null;
 
     // Build query
     let query = supabase
@@ -94,13 +97,14 @@ export async function GET(request: NextRequest) {
 
       // C6 Fix: Pro filtering by member_id requires pro_member_links verification
       if (memberIdFilter) {
-        const { data: link } = await supabase
+        const { data: linkRaw } = await supabase
           .from('pro_member_links')
           .select('id')
           .eq('pro_id', proProfile.id)
           .eq('member_id', memberIdFilter)
           .eq('status', 'active')
           .maybeSingle();
+        const link = linkRaw as Pick<Tables<'pro_member_links'>, 'id'> | null;
 
         if (!link) {
           return NextResponse.json(
@@ -123,7 +127,10 @@ export async function GET(request: NextRequest) {
       query = query.eq('status', status);
     }
 
-    const { data, error, count } = await query;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: reportsRaw, error, count } = await query;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const data = reportsRaw as any[] | null;
 
     if (error) {
       logger.error('Reports fetch failed', { error: error.message, userId: user.id });

@@ -307,11 +307,11 @@ export default function SubscriptionPage() {
               key={plan.id}
               className={cn(
                 'card p-4 relative transition-all',
-                plan?.popular && 'ring-2 ring-brand-primary',
+                ('popular' in plan) && (plan as any).popular && 'ring-2 ring-brand-primary',
                 isCurrent && 'bg-brand-primary/5'
               )}
             >
-              {plan?.popular && (
+              {('popular' in plan) && (plan as any).popular && (
                 <span className="absolute -top-2 right-4 bg-brand-primary text-white text-[10px] px-2 py-0.5 rounded-full">
                   추천
                 </span>

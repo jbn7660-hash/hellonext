@@ -112,7 +112,10 @@ export function useCausalGraph(sessionId?: string): UseCausalGraphState & UseCau
           .from('causal_graphs')
           .select('*')
           .eq('session_id', targetSessionId)
-          .single();
+          .single() as unknown as {
+            data: { nodes: any[]; edges: any[]; iis_results: any[] } | null;
+            error: Error | null;
+          };
 
         if (fetchError) {
           throw fetchError;
@@ -153,7 +156,7 @@ export function useCausalGraph(sessionId?: string): UseCausalGraphState & UseCau
           nodes: graphNodes,
           edges: graphEdges,
           iisResults,
-          primaryFix: iisResults.length > 0 ? iisResults[0] : null,
+          primaryFix: iisResults.length > 0 ? (iisResults[0] ?? null) : null,
         };
 
         const validationResult = isValidDAG(model);

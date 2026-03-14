@@ -15,8 +15,8 @@ import { logger } from '@/lib/utils/logger';
 
 const UpdateScopeSchema = z.object({
   member_id: z.string().uuid(),
-  hidden_patterns: z.array(z.string().regex(/^EP-\d{3}$/)).optional(),
-  tone_level: z.enum(['observe_only', 'gentle_suggest', 'specific_guide']).optional(),
+  visible_error_patterns: z.array(z.string().regex(/^EP-\d{3}$/)).optional(),
+  ai_tone: z.enum(['observe_only', 'gentle_suggest', 'specific_guide']).optional(),
 });
 
 export async function GET(request: NextRequest) {
@@ -36,11 +36,13 @@ export async function GET(request: NextRequest) {
     }
 
     // Verify pro identity
-    const { data: proProfile } = await supabase
+    const { data: proProfileRaw } = await supabase
       .from('pro_profiles')
       .select('id')
       .eq('user_id', user.id)
       .single();
+
+    const proProfile = proProfileRaw as { id: string } | null;
 
     if (!proProfile) {
       return NextResponse.json({ error: 'Pro profile not found' }, { status: 403 });
@@ -63,8 +65,8 @@ export async function GET(request: NextRequest) {
     const settings = data ?? {
       pro_id: proProfile.id,
       member_id: memberId,
-      hidden_patterns: [],
-      tone_level: 'observe_only',
+      visible_error_patterns: [],
+      ai_tone: 'observe_only',
     };
 
     return NextResponse.json({ data: settings });
@@ -93,11 +95,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { data: proProfile } = await supabase
+    const { data: proProfileRaw } = await supabase
       .from('pro_profiles')
       .select('id')
       .eq('user_id', user.id)
       .single();
+
+    const proProfile = proProfileRaw as { id: string } | null;
 
     if (!proProfile) {
       return NextResponse.json({ error: 'Pro profile not found' }, { status: 403 });
@@ -110,13 +114,13 @@ export async function POST(request: NextRequest) {
         {
           pro_id: proProfile.id,
           member_id: parsed.data.member_id,
-          ...(parsed.data.hidden_patterns !== undefined && {
-            hidden_patterns: parsed.data.hidden_patterns,
+          ...(parsed.data.visible_error_patterns !== undefined && {
+            visible_error_patterns: parsed.data.visible_error_patterns,
           }),
-          ...(parsed.data.tone_level !== undefined && {
-            tone_level: parsed.data.tone_level,
+          ...(parsed.data.ai_tone !== undefined && {
+            ai_tone: parsed.data.ai_tone,
           }),
-        },
+        } as unknown as never,
         { onConflict: 'pro_id,member_id' }
       )
       .select()
@@ -127,14 +131,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to save' }, { status: 500 });
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const savedData = data as any;
     logger.info('AI scope updated', {
       proId: proProfile.id,
       memberId: parsed.data.member_id,
-      toneLevel: data.tone_level,
-      hiddenCount: data.hidden_patterns?.length ?? 0,
+      aiTone: savedData?.ai_tone,
+      visibleCount: savedData?.visible_error_patterns?.length ?? 0,
     });
 
-    return NextResponse.json({ data });
+    return NextResponse.json({ data: savedData });
   } catch (err) {
     logger.error('AI scope POST error', { error: err });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

@@ -34,11 +34,13 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
     }
 
     // Get pro profile to verify ownership
-    const { data: proProfile } = await supabase
+    const { data: proProfileRaw } = await supabase
       .from('pro_profiles')
       .select('id')
       .eq('user_id', user.id)
       .single();
+
+    const proProfile = proProfileRaw as { id: string } | null;
 
     if (!proProfile) {
       return NextResponse.json({ error: 'Pro profile not found' }, { status: 403 });
@@ -55,7 +57,8 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Memo not found' }, { status: 404 });
     }
 
-    return NextResponse.json({ data });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return NextResponse.json({ data: data as any });
   } catch (err) {
     logger.error('Memo GET error', { error: err });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -74,23 +77,27 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     }
 
     // Get pro profile to verify ownership
-    const { data: proProfile } = await supabase
+    const { data: proProfileRaw } = await supabase
       .from('pro_profiles')
       .select('id')
       .eq('user_id', user.id)
       .single();
+
+    const proProfile = proProfileRaw as { id: string } | null;
 
     if (!proProfile) {
       return NextResponse.json({ error: 'Pro profile not found' }, { status: 403 });
     }
 
     // Verify ownership
-    const { data: existingMemo } = await supabase
+    const { data: existingMemoRaw } = await supabase
       .from('voice_memos')
       .select('id, member_id')
       .eq('id', id)
       .eq('pro_id', proProfile.id)
       .single();
+
+    const existingMemo = existingMemoRaw as { id: string; member_id: string | null } | null;
 
     if (!existingMemo) {
       return NextResponse.json({ error: 'Memo not found or access denied' }, { status: 404 });
@@ -106,13 +113,17 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    const { data, error } = await supabase
+    const { data: updatedRaw, error } = await supabase
       .from('voice_memos')
-      .update(parsed.data)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .update(parsed.data as unknown as never)
       .eq('id', id)
       .eq('pro_id', proProfile.id)
       .select('*')
       .single();
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const data = updatedRaw as any;
 
     if (error) {
       logger.error('Memo update failed', { memoId: id, error: error.message });

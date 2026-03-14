@@ -140,7 +140,7 @@ export function EditDeltaHistory({
   // Infinite scroll
   useEffect(() => {
     const observer = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting && hasMore) {
+      if (entry?.isIntersecting && hasMore) {
         setDisplayCount((prev) => Math.min(prev + pageSize, filteredDeltas.length));
       }
     });

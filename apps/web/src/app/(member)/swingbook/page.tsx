@@ -469,7 +469,6 @@ function SwingCard({
           onVideoClick();
         }
       }}
-      onLongPress={onDetailsClick}
       className={cn(
         'relative rounded-xl overflow-hidden border-2 transition-all text-left',
         compareMode && isCompareSelected

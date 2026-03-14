@@ -100,6 +100,7 @@ export async function callFsmAction(
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), timeout);
 
+      type InvokeResult = { data: { state: FsmState; [key: string]: unknown } | null; error: Error | null };
       try {
         const response = await Promise.race([
           supabase.functions.invoke('voice-fsm-controller', {
@@ -108,10 +109,10 @@ export async function callFsmAction(
               params,
             },
           }),
-          new Promise((_, reject) =>
+          new Promise<never>((_, reject) =>
             setTimeout(() => reject(new Error(`FSM action ${action} timeout after ${timeout}ms`)), timeout)
           ),
-        ]);
+        ]) as InvokeResult;
 
         clearTimeout(timeoutId);
 
@@ -122,8 +123,8 @@ export async function callFsmAction(
         logger.info(`FSM action ${action} completed`, { state: response?.data?.state, attempt });
 
         return {
-          state: response?.data?.state,
-          data: response?.data,
+          state: (response?.data?.state ?? 'ERROR') as FsmState,
+          data: (response?.data ?? {}) as Record<string, unknown>,
         };
       } finally {
         clearTimeout(timeoutId);
@@ -291,7 +292,10 @@ export async function getCurrentFsmState(
       .from('voice_memo_cache')
       .select('state, target_id, transcription_job_id, transcript')
       .eq('memo_id', memoId)
-      .single();
+      .single() as unknown as {
+        data: { state: string; target_id: string | null; transcription_job_id: string | null; transcript: string | null } | null;
+        error: Error | null;
+      };
 
     if (error || !data) {
       logger.warn(`FSM cache not found for memo ${memoId}`, { error });
@@ -299,7 +303,7 @@ export async function getCurrentFsmState(
     }
 
     const state = data.state as FsmState;
-    const recoveryAction = getRecoveryAction(state, data.transcription_job_id);
+    const recoveryAction = getRecoveryAction(state as SharedFsmState, data.transcription_job_id);
 
     logger.info(`Current FSM state retrieved`, {
       memoId,

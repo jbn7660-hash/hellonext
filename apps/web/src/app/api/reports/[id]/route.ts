@@ -12,6 +12,13 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { z } from 'zod';
 import { logger } from '@/lib/utils/logger';
+import type { Tables } from '@/lib/supabase/types';
+
+type ReportRow = Tables<'reports'> & {
+  voice_memos?: { id: string; transcript: string | null; duration_sec: number } | null;
+  pro_profiles?: { display_name: string; studio_name: string | null } | null;
+  member_profiles?: { display_name: string } | null;
+};
 
 const UpdateReportSchema = z.object({
   title: z.string().min(1).optional(),
@@ -38,7 +45,7 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { data, error } = await supabase
+    const { data: dataRaw, error } = await supabase
       .from('reports')
       .select(`
         *,
@@ -48,6 +55,7 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
       `)
       .eq('id', id)
       .single();
+    const data = dataRaw as ReportRow | null;
 
     if (error || !data) {
       logger.warn('Report not found', { id, userId: user.id, error: error?.message });
@@ -55,15 +63,17 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
     }
 
     // If member is reading, mark as read
-    const { data: memberProfile } = await supabase
+    const { data: memberProfileRaw } = await supabase
       .from('member_profiles')
       .select('id')
       .eq('user_id', user.id)
       .single();
+    const memberProfile = memberProfileRaw as Pick<Tables<'member_profiles'>, 'id'> | null;
 
     if (memberProfile && data.member_id === memberProfile.id && data.status === 'published') {
       const readAt = new Date().toISOString();
-      const { error: updateError } = await supabase
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error: updateError } = await (supabase as any)
         .from('reports')
         .update({ status: 'read', read_at: readAt })
         .eq('id', id);
@@ -109,29 +119,32 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     }
 
     // Verify user owns this report (pro)
-    const { data: existing } = await supabase
+    const { data: existingRaw } = await supabase
       .from('reports')
       .select('pro_id')
       .eq('id', id)
       .single();
+    const existing = existingRaw as Pick<Tables<'reports'>, 'pro_id'> | null;
 
     if (!existing) {
       return NextResponse.json({ error: 'Report not found' }, { status: 404 });
     }
 
     // Get pro profile to check ownership
-    const { data: proProfile } = await supabase
+    const { data: proProfileRaw } = await supabase
       .from('pro_profiles')
       .select('id')
       .eq('user_id', user.id)
       .single();
+    const proProfile = proProfileRaw as Pick<Tables<'pro_profiles'>, 'id'> | null;
 
     if (!proProfile || existing.pro_id !== proProfile.id) {
       logger.warn('Unauthorized report update attempt', { id, userId: user.id });
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
-    const { data, error } = await supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: updatedRaw, error } = await (supabase as any)
       .from('reports')
       .update({
         ...parsed.data,
@@ -140,6 +153,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       .eq('id', id)
       .select('*')
       .single();
+    const data = updatedRaw as Tables<'reports'> | null;
 
     if (error) {
       logger.error('Report update failed', { id, userId: user.id, error: error.message });

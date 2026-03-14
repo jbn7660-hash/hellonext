@@ -127,7 +127,7 @@ export function OrphanMemoSheet({ isOpen, onClose, onMemoAssigned }: OrphanMemoS
       isOpen={isOpen}
       onClose={onClose}
       title={`고아 메모 (${memos.length})`}
-      snapPoint={75}
+      snapPoints={[75]}
     >
       {error && (
         <div className="bg-status-error/10 text-status-error text-sm px-4 py-2 rounded-lg mb-4">

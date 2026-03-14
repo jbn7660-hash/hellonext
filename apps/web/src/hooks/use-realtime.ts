@@ -174,7 +174,7 @@ export function useRealtimeBroadcast<T = Record<string, unknown>>(
 
     // Subscribe to broadcast events
     const subscription = channel
-      .on('broadcast', { event: eventName }, (message: RealtimeEvent<T>) => {
+      .on('broadcast' as 'system', { event: eventName }, (message: RealtimeEvent<T>) => {
         lastEventTimeRef.current = Date.now();
 
         // Deduplication: skip if we've seen this event recently

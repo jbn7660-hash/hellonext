@@ -40,59 +40,6 @@ export function VideoDropzone({ mode, members, onUploadComplete, className }: Vi
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
-  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // Validate file size
-    if (file.size > MAX_FILE_SIZE) {
-      setError('영상이 너무 큽니다. 100MB 이하의 영상을 선택해주세요.');
-      return;
-    }
-
-    // Validate file type
-    if (!ACCEPTED_MIME_TYPES.includes(file.type)) {
-      setError(`지원하지 않는 파일 형식입니다. MP4, MOV, WebM 파일을 선택해주세요. (${file.type})`);
-      return;
-    }
-
-    // Validate video duration (basic check via file metadata if available)
-    // Full validation happens on server
-    const video = document.createElement('video');
-    video.onloadedmetadata = () => {
-      if (video.duration > MAX_VIDEO_DURATION_SEC) {
-        setError(`영상이 60초를 초과합니다. (${Math.round(video.duration)}초)`);
-        setSelectedFile(null);
-      } else {
-        setSelectedFile(file);
-        setError(null);
-
-        // Member: auto-upload. Pro: wait for member selection.
-        if (mode === 'member') {
-          setUploadState('uploading');
-          uploadFile(file, null);
-        } else {
-          setUploadState('selected');
-        }
-      }
-      URL.revokeObjectURL(video.src);
-    };
-    video.onerror = () => {
-      // If metadata fails to load, allow it (may not be available in all contexts)
-      setSelectedFile(file);
-      setError(null);
-
-      if (mode === 'member') {
-        setUploadState('uploading');
-        uploadFile(file, null);
-      } else {
-        setUploadState('selected');
-      }
-      URL.revokeObjectURL(video.src);
-    };
-    video.src = URL.createObjectURL(file);
-  }, [mode, uploadFile]);
-
   const uploadFile = useCallback(async (file: File, memberId: string | null) => {
     setUploadState('uploading');
     setProgress(0);
@@ -168,6 +115,59 @@ export function VideoDropzone({ mode, members, onUploadComplete, className }: Vi
       logger.error('Dropzone upload failed', { error: err, fileSize: file.size });
     }
   }, [onUploadComplete]);
+
+  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file size
+    if (file.size > MAX_FILE_SIZE) {
+      setError('영상이 너무 큽니다. 100MB 이하의 영상을 선택해주세요.');
+      return;
+    }
+
+    // Validate file type
+    if (!ACCEPTED_MIME_TYPES.includes(file.type)) {
+      setError(`지원하지 않는 파일 형식입니다. MP4, MOV, WebM 파일을 선택해주세요. (${file.type})`);
+      return;
+    }
+
+    // Validate video duration (basic check via file metadata if available)
+    // Full validation happens on server
+    const video = document.createElement('video');
+    video.onloadedmetadata = () => {
+      if (video.duration > MAX_VIDEO_DURATION_SEC) {
+        setError(`영상이 60초를 초과합니다. (${Math.round(video.duration)}초)`);
+        setSelectedFile(null);
+      } else {
+        setSelectedFile(file);
+        setError(null);
+
+        // Member: auto-upload. Pro: wait for member selection.
+        if (mode === 'member') {
+          setUploadState('uploading');
+          uploadFile(file, null);
+        } else {
+          setUploadState('selected');
+        }
+      }
+      URL.revokeObjectURL(video.src);
+    };
+    video.onerror = () => {
+      // If metadata fails to load, allow it (may not be available in all contexts)
+      setSelectedFile(file);
+      setError(null);
+
+      if (mode === 'member') {
+        setUploadState('uploading');
+        uploadFile(file, null);
+      } else {
+        setUploadState('selected');
+      }
+      URL.revokeObjectURL(video.src);
+    };
+    video.src = URL.createObjectURL(file);
+  }, [mode, uploadFile]);
 
   const handleProUpload = useCallback(() => {
     if (!selectedFile || !selectedMemberId) return;

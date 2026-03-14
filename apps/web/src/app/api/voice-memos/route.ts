@@ -38,11 +38,13 @@ export async function GET(request: NextRequest) {
     }
 
     // Get pro profile
-    const { data: proProfile } = await supabase
+    const { data: proProfileRaw } = await supabase
       .from('pro_profiles')
       .select('id')
       .eq('user_id', user.id)
       .single();
+
+    const proProfile = proProfileRaw as { id: string } | null;
 
     if (!proProfile) {
       return NextResponse.json({ error: 'Pro profile not found' }, { status: 403 });
@@ -93,7 +95,8 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({
-      data,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      data: data as any[],
       pagination: { page, limit, total: count ?? 0 },
     });
   } catch (err) {
@@ -114,11 +117,13 @@ export async function POST(request: NextRequest) {
 
     // Get pro profile
     // C7 Fix: pro_profiles.tier 사용 (subscription_status 컬럼 미존재)
-    const { data: proProfile } = await supabase
+    const { data: proProfileRaw } = await supabase
       .from('pro_profiles')
       .select('id, tier')
       .eq('user_id', user.id)
       .single();
+
+    const proProfile = proProfileRaw as { id: string; tier: string } | null;
 
     if (!proProfile) {
       return NextResponse.json(
@@ -144,7 +149,7 @@ export async function POST(request: NextRequest) {
     const { audio_url, duration_sec, member_id } = parsed.data;
 
     // Create memo record
-    const { data: memo, error: insertError } = await supabase
+    const { data: memoRaw, error: insertError } = await supabase
       .from('voice_memos')
       .insert({
         pro_id: proProfile.id,
@@ -152,9 +157,12 @@ export async function POST(request: NextRequest) {
         audio_url,
         duration_sec,
         status: 'recording',
-      })
+      } as unknown as never)
       .select('*')
       .single();
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const memo = memoRaw as any;
 
     if (insertError || !memo) {
       logger.error('Failed to create memo', { error: insertError?.message });

@@ -14,6 +14,16 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { logger } from '@/lib/utils/logger';
+import type { Tables } from '@/lib/supabase/types';
+
+type ReportWithRelations = {
+  id: string;
+  title: string;
+  status: string;
+  member_id: string;
+  member_profiles: { user_id: string; display_name: string } | Array<{ user_id: string; display_name: string }> | null;
+  pro_profiles: { id: string } | Array<{ id: string }> | null;
+};
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -33,7 +43,7 @@ export async function POST(_request: NextRequest, { params }: RouteParams) {
     }
 
     // Fetch report with member info
-    const { data: report, error: fetchError } = await supabase
+    const { data: reportRaw, error: fetchError } = await supabase
       .from('reports')
       .select(`
         id,
@@ -46,6 +56,7 @@ export async function POST(_request: NextRequest, { params }: RouteParams) {
       .eq('id', id)
       .eq('status', 'draft')
       .single();
+    const report = reportRaw as ReportWithRelations | null;
 
     if (fetchError || !report) {
       logger.warn('Draft report not found for publish', { id, userId: user.id });
@@ -64,11 +75,12 @@ export async function POST(_request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Report validation failed' }, { status: 400 });
     }
 
-    const { data: proProfile } = await supabase
+    const { data: proProfileRaw } = await supabase
       .from('pro_profiles')
       .select('id')
       .eq('user_id', user.id)
       .single();
+    const proProfile = proProfileRaw as Pick<Tables<'pro_profiles'>, 'id'> | null;
 
     if (!proProfile || proData.id !== proProfile.id) {
       logger.warn('Unauthorized report publish attempt', { id, userId: user.id });
@@ -77,12 +89,10 @@ export async function POST(_request: NextRequest, { params }: RouteParams) {
 
     // Publish report
     const publishedAt = new Date().toISOString();
-    const { error: updateError } = await supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: updateError } = await (supabase as any)
       .from('reports')
-      .update({
-        status: 'published',
-        published_at: publishedAt,
-      })
+      .update({ status: 'published', published_at: publishedAt })
       .eq('id', id);
 
     if (updateError) {

@@ -202,7 +202,7 @@ export function CausalGraphViewer({
         className="w-full border border-gray-100 rounded bg-white cursor-grab active:cursor-grabbing"
         style={{
           overflow: 'auto',
-          touch: 'none',
+          touchAction: 'none',
         }}
         onWheel={handleWheel}
         onMouseMove={handleMouseMove}
@@ -472,7 +472,7 @@ export function CausalGraphViewer({
               <span className="text-gray-700">악화 (Aggravates)</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="h-0.5 w-6 border-t border-purple-500" style={{ borderDasharray: '2,2' }} />
+              <div className="h-0.5 w-6 border-t border-purple-500 border-dashed" />
               <span className="text-gray-700">상관 (Correlates)</span>
             </div>
           </div>

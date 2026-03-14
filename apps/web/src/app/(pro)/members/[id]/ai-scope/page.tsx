@@ -14,7 +14,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { ERROR_PATTERNS } from '@hellonext/shared/constants/error-patterns';
-import { SWING_POSITIONS } from '@hellonext/shared/constants/swing-positions';
+import { getSwingPosition } from '@hellonext/shared/constants/swing-positions';
 import { cn } from '@/lib/utils/cn';
 import { logger } from '@/lib/utils/logger';
 
@@ -140,10 +140,10 @@ export default function AIScopePage() {
     (acc, pattern) => {
       const pos = pattern.position;
       if (!acc[pos]) acc[pos] = [];
-      acc[pos].push(pattern);
+      acc[pos] = [...(acc[pos] ?? []), pattern];
       return acc;
     },
-    {} as Record<string, typeof ERROR_PATTERNS>
+    {} as Record<string, typeof ERROR_PATTERNS[number][]>
   );
 
   return (
@@ -207,7 +207,7 @@ export default function AIScopePage() {
         </div>
 
         {Object.entries(patternsByPosition).map(([position, patterns]) => {
-          const posInfo = SWING_POSITIONS[position];
+          const posInfo = getSwingPosition(position);
           return (
             <div key={position} className="mb-4">
               <h3 className="text-xs font-medium text-text-tertiary uppercase mb-2">

@@ -16,13 +16,14 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { logger } from '@/lib/utils/logger';
+import type { Tables } from '@/lib/supabase/types';
 
 interface EditDeltaRequest {
-  decision_id: string; // UUID
-  edited_fields: string[]; // Field names changed
-  original_value: Record<string, unknown>; // Before values
-  edited_value: Record<string, unknown>; // After values
-  confidence_score?: number; // [0.0, 1.0] for data quality tier
+  decision_id: string;
+  edited_fields: string[];
+  original_value: Record<string, unknown>;
+  edited_value: Record<string, unknown>;
+  confidence_score?: number;
 }
 
 interface EditDeltaResponse {
@@ -32,13 +33,12 @@ interface EditDeltaResponse {
   original_value: Record<string, unknown>;
   edited_value: Record<string, unknown>;
   delta_value: Record<string, unknown>;
-  data_quality_tier: string; // tier_1, tier_2, tier_3
+  data_quality_tier: string;
   created_at: string;
 }
 
 /**
  * Compute delta between original and edited values.
- * Returns JSONB object with differences.
  */
 function computeEditDelta(
   originalValue: Record<string, unknown>,
@@ -51,7 +51,6 @@ function computeEditDelta(
     const original = originalValue[field];
     const edited = editedValue[field];
 
-    // Compute numeric delta if applicable
     if (typeof original === 'number' && typeof edited === 'number') {
       delta[field] = {
         original,
@@ -72,9 +71,6 @@ function computeEditDelta(
 
 /**
  * Determine data quality tier based on confidence score.
- * tier_1: AI unchanged (confidence < 0.3)
- * tier_2: Partial edit (confidence 0.3-0.7)
- * tier_3: Full override (confidence > 0.7)
  */
 function determineDataQualityTier(confidenceScore: number): string {
   if (confidenceScore < 0.3) return 'tier_1';
@@ -84,8 +80,6 @@ function determineDataQualityTier(confidenceScore: number): string {
 
 /**
  * POST /api/edit-deltas
- * Record a coach edit delta.
- * DC-1 compliance: Validates only Layer C (coaching_decisions) is edited.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -96,7 +90,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '인증이 필요합니다.' }, { status: 401 });
     }
 
-    // Parse request body
     const body = (await request.json()) as EditDeltaRequest;
     const {
       decision_id,
@@ -106,7 +99,6 @@ export async function POST(request: NextRequest) {
       confidence_score = 0.5,
     } = body;
 
-    // Validation
     if (!decision_id || !edited_fields || !original_value || !edited_value) {
       return NextResponse.json(
         { error: 'decision_id, edited_fields, original_value, and edited_value are required' },
@@ -131,15 +123,18 @@ export async function POST(request: NextRequest) {
     logger.info('Recording edit delta', {
       userId: user.id,
       decisionId: decision_id,
-      editedFields,
+      editedFields: edited_fields,
     });
 
     // DC-1 Compliance: Verify the decision exists and belongs to Layer C
-    const { data: decision, error: decisionError } = await supabase
+    // coaching_decisions schema: id, auto_draft, coach_edited, coach_profile_id, created_at, data_quality_tier, primary_fix, session_id, updated_at
+    const { data: decisionRaw, error: decisionError } = await supabase
       .from('coaching_decisions')
       .select('id, coach_profile_id, data_quality_tier')
       .eq('id', decision_id)
       .single();
+
+    const decision = decisionRaw as Tables<'coaching_decisions'> | null;
 
     if (decisionError || !decision) {
       logger.warn('Coaching decision not found', {
@@ -149,12 +144,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '코칭 결정을 찾을 수 없습니다.' }, { status: 404 });
     }
 
-    // Verify user is the coach for this decision
-    const { data: proProfile, error: profileError } = await supabase
+    const { data: proProfileRaw, error: profileError } = await supabase
       .from('pro_profiles')
       .select('id')
       .eq('user_id', user.id)
       .single();
+
+    const proProfile = proProfileRaw as Tables<'pro_profiles'> | null;
 
     if (profileError || !proProfile || proProfile.id !== decision.coach_profile_id) {
       logger.warn('User not authorized to edit this decision', {
@@ -167,14 +163,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Compute delta
     const deltaValue = computeEditDelta(original_value, edited_value, edited_fields);
-
-    // Determine data quality tier
     const dataQualityTier = determineDataQualityTier(confidence_score);
 
-    // Insert edit delta
-    const { data: editDelta, error: insertError } = await supabase
+    // edit_deltas schema: id, created_at, data_quality_tier, decision_id, delta_value, edited_fields, edited_value, original_value
+    const { data: editDeltaRaw, error: insertError } = await (supabase as any)
       .from('edit_deltas')
       .insert({
         decision_id,
@@ -188,11 +181,13 @@ export async function POST(request: NextRequest) {
       .select('*')
       .single();
 
-    if (insertError) {
+    const editDelta = editDeltaRaw as Tables<'edit_deltas'> | null;
+
+    if (insertError || !editDelta) {
       logger.error('Failed to insert edit delta', {
         userId: user.id,
         decisionId: decision_id,
-        error: insertError.message,
+        error: insertError?.message,
       });
       return NextResponse.json(
         { error: '수정 델타를 기록할 수 없습니다.' },
@@ -209,7 +204,7 @@ export async function POST(request: NextRequest) {
 
     // Update decision's data_quality_tier if needed
     if (dataQualityTier !== decision.data_quality_tier) {
-      const { error: updateError } = await supabase
+      const { error: updateError } = await (supabase as any)
         .from('coaching_decisions')
         .update({
           data_quality_tier: dataQualityTier,
@@ -247,7 +242,6 @@ export async function POST(request: NextRequest) {
 
 /**
  * GET /api/edit-deltas?decision_id=<uuid>&page=1&limit=20
- * Retrieve edit deltas for a decision with pagination.
  */
 export async function GET(request: NextRequest) {
   try {
@@ -258,7 +252,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: '인증이 필요합니다.' }, { status: 401 });
     }
 
-    // Get query parameters
     const { searchParams } = new URL(request.url);
     const decisionId = searchParams.get('decision_id');
     const page = parseInt(searchParams.get('page') || '1', 10);
@@ -285,12 +278,13 @@ export async function GET(request: NextRequest) {
       limit,
     });
 
-    // Verify decision exists and user is authorized
-    const { data: decision, error: decisionError } = await supabase
+    const { data: decisionRaw, error: decisionError } = await supabase
       .from('coaching_decisions')
       .select('id, coach_profile_id')
       .eq('id', decisionId)
       .single();
+
+    const decision = decisionRaw as Tables<'coaching_decisions'> | null;
 
     if (decisionError || !decision) {
       return NextResponse.json(
@@ -299,12 +293,13 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Verify user is the coach
-    const { data: proProfile } = await supabase
+    const { data: proProfileRaw } = await supabase
       .from('pro_profiles')
       .select('id')
       .eq('user_id', user.id)
       .single();
+
+    const proProfile = proProfileRaw as Tables<'pro_profiles'> | null;
 
     if (!proProfile || proProfile.id !== decision.coach_profile_id) {
       return NextResponse.json(
@@ -313,11 +308,10 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Fetch edit deltas with pagination
     const offset = (page - 1) * limit;
 
     const {
-      data: editDeltas,
+      data: editDeltasRaw,
       error: fetchError,
       count,
     } = await supabase
@@ -326,6 +320,8 @@ export async function GET(request: NextRequest) {
       .eq('decision_id', decisionId)
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);
+
+    const editDeltas = editDeltasRaw as Tables<'edit_deltas'>[] | null;
 
     if (fetchError) {
       logger.error('Failed to fetch edit deltas', {

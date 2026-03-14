@@ -11,6 +11,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createClient, createServiceClient } from '@/lib/supabase/server';
 import { logger } from '@/lib/utils/logger';
+import type { Tables } from '@/lib/supabase/types';
 
 const CLOUDINARY_UPLOAD_URL = `https://api.cloudinary.com/v1_1/${process.env.CLOUDINARY_CLOUD_NAME}/video/upload`;
 const MAX_VIDEO_SIZE_BYTES = 100 * 1024 * 1024; // 100MB
@@ -51,17 +52,19 @@ export async function POST(request: NextRequest) {
     }
 
     // Determine uploader role
-    const { data: memberProfile } = await supabase
+    const { data: memberProfileRaw } = await supabase
       .from('member_profiles')
       .select('id')
       .eq('user_id', user.id)
       .maybeSingle();
+    const memberProfile = memberProfileRaw as Pick<Tables<'member_profiles'>, 'id'> | null;
 
-    const { data: proProfile } = await supabase
+    const { data: proProfileRaw } = await supabase
       .from('pro_profiles')
       .select('id')
       .eq('user_id', user.id)
       .maybeSingle();
+    const proProfile = proProfileRaw as Pick<Tables<'pro_profiles'>, 'id'> | null;
 
     const uploaderMemberId = memberProfile?.id ?? memberId;
     const uploaderProId = proProfile?.id ?? null;
@@ -111,24 +114,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create DB record
-    const { data, error } = await supabase
+    // Create DB record — swing_videos schema: cloudinary_id, video_url, thumbnail_url, duration_sec, source, member_id
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: insertedRaw, error } = await (supabase as any)
       .from('swing_videos')
       .insert({
-        member_id: uploaderMemberId,
-        pro_id: uploaderProId,
-        cloudinary_url: cloudinaryData.secure_url,
-        cloudinary_public_id: cloudinaryData.public_id,
-        thumbnail_url: cloudinaryData.secure_url.replace(/\.[^.]+$/, '.jpg'),
-        duration_sec: Math.round(cloudinaryData.duration),
-        width: cloudinaryData.width,
-        height: cloudinaryData.height,
-        file_size_bytes: cloudinaryData.bytes,
+        member_id: uploaderMemberId ?? '',
+        cloudinary_id: cloudinaryData.public_id,
+        video_url: cloudinaryData.secure_url,
+        thumbnail_url: (cloudinaryData.secure_url as string).replace(/\.[^.]+$/, '.jpg'),
+        duration_sec: Math.round(cloudinaryData.duration as number),
         source,
-        status: 'uploaded',
       })
-      .select('id, cloudinary_url, thumbnail_url, duration_sec, status')
+      .select('id, video_url, thumbnail_url, duration_sec, source')
       .single();
+    const data = insertedRaw as Pick<Tables<'swing_videos'>, 'id' | 'video_url' | 'thumbnail_url' | 'duration_sec' | 'source'> | null;
 
     if (error) {
       logger.error('Swing video insert failed', { error: error.message });
@@ -136,9 +136,9 @@ export async function POST(request: NextRequest) {
     }
 
     logger.info('Swing video uploaded', {
-      videoId: data.id,
+      videoId: data?.id,
       source,
-      durationSec: data.duration_sec,
+      durationSec: data?.duration_sec,
       memberId: uploaderMemberId,
     });
 
@@ -164,22 +164,24 @@ export async function GET(request: NextRequest) {
     const memberIdFilter = searchParams.get('member_id');
 
     // Check user role
-    const { data: memberProfile } = await supabase
+    const { data: memberProfileRaw } = await supabase
       .from('member_profiles')
       .select('id')
       .eq('user_id', user.id)
       .maybeSingle();
+    const memberProfile = memberProfileRaw as Pick<Tables<'member_profiles'>, 'id'> | null;
 
-    const { data: proProfile } = await supabase
+    const { data: proProfileRaw } = await supabase
       .from('pro_profiles')
       .select('id')
       .eq('user_id', user.id)
       .maybeSingle();
+    const proProfile = proProfileRaw as Pick<Tables<'pro_profiles'>, 'id'> | null;
 
-    // Build query
+    // Build query — swing_videos schema: id, video_url, thumbnail_url, duration_sec, source, created_at, member_id
     let query = supabase
       .from('swing_videos')
-      .select('id, cloudinary_url, thumbnail_url, duration_sec, status, source, created_at, member_id', {
+      .select('id, video_url, thumbnail_url, duration_sec, source, created_at, member_id', {
         count: 'exact',
       })
       .order('created_at', { ascending: false })
@@ -190,13 +192,14 @@ export async function GET(request: NextRequest) {
       query = query.eq('member_id', memberProfile.id);
     } else if (proProfile && memberIdFilter) {
       // C6 Fix: Pro-member link 검증 (인가 우회 방지)
-      const { data: link } = await supabase
+      const { data: linkRaw } = await supabase
         .from('pro_member_links')
         .select('id')
         .eq('pro_id', proProfile.id)
         .eq('member_id', memberIdFilter)
         .eq('status', 'active')
         .maybeSingle();
+      const link = linkRaw as Pick<Tables<'pro_member_links'>, 'id'> | null;
 
       if (!link) {
         return NextResponse.json(
@@ -211,7 +214,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
-    const { data, error, count } = await query;
+    const { data: videosRaw, error, count } = await query;
+    const videos = videosRaw as Array<Pick<Tables<'swing_videos'>, 'id' | 'video_url' | 'thumbnail_url' | 'duration_sec' | 'source' | 'created_at' | 'member_id'>> | null;
 
     if (error) {
       logger.error('Swing videos fetch failed', { error: error.message });
@@ -219,7 +223,7 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({
-      data: data ?? [],
+      data: videos ?? [],
       pagination: { page, limit, total: count ?? 0 },
     });
   } catch (err) {
