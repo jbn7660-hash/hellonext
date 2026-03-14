@@ -23,8 +23,9 @@
  * @feature F-011, F-014
  */
 
-import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
+import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
+import { encode as base64UrlEncode } from 'https://deno.land/std@0.208.0/encoding/base64url.ts';
 
 const allowedOrigin = Deno.env.get('ALLOWED_ORIGIN') ?? 'https://hellonext.app';
 
@@ -466,7 +467,77 @@ async function sendKakaoAlimtalk(
   }
 }
 
-// Helper: Send FCM Push with retry
+// Helper: Import PEM-encoded RSA private key for JWT signing
+async function importPrivateKey(pem: string): Promise<CryptoKey> {
+  const pemContents = pem
+    .replace(/-----BEGIN PRIVATE KEY-----/, '')
+    .replace(/-----END PRIVATE KEY-----/, '')
+    .replace(/\s/g, '');
+  const binaryDer = Uint8Array.from(atob(pemContents), (c) => c.charCodeAt(0));
+  return await crypto.subtle.importKey(
+    'pkcs8',
+    binaryDer,
+    { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+}
+
+// Helper: Create a signed JWT for Google OAuth2
+async function createSignedJwt(
+  clientEmail: string,
+  privateKey: CryptoKey
+): Promise<string> {
+  const now = Math.floor(Date.now() / 1000);
+  const header = { alg: 'RS256', typ: 'JWT' };
+  const payload = {
+    iss: clientEmail,
+    scope: 'https://www.googleapis.com/auth/firebase.messaging',
+    aud: 'https://oauth2.googleapis.com/token',
+    iat: now,
+    exp: now + 3600,
+  };
+
+  const encoder = new TextEncoder();
+  const headerB64 = base64UrlEncode(encoder.encode(JSON.stringify(header)));
+  const payloadB64 = base64UrlEncode(encoder.encode(JSON.stringify(payload)));
+  const signingInput = `${headerB64}.${payloadB64}`;
+
+  const signature = await crypto.subtle.sign(
+    'RSASSA-PKCS1-v1_5',
+    privateKey,
+    encoder.encode(signingInput)
+  );
+
+  const signatureB64 = base64UrlEncode(new Uint8Array(signature));
+  return `${signingInput}.${signatureB64}`;
+}
+
+// Helper: Exchange JWT for Google OAuth2 access token
+async function getGoogleAccessToken(serviceAccountJson: string): Promise<string> {
+  const sa = JSON.parse(serviceAccountJson);
+  const privateKey = await importPrivateKey(sa.private_key);
+  const jwt = await createSignedJwt(sa.client_email, privateKey);
+
+  const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+      assertion: jwt,
+    }),
+  });
+
+  if (!tokenRes.ok) {
+    const errBody = await tokenRes.text();
+    throw new Error(`Google OAuth2 token exchange failed: ${tokenRes.status} ${errBody}`);
+  }
+
+  const tokenData = await tokenRes.json();
+  return tokenData.access_token;
+}
+
+// Helper: Send FCM Push with retry (uses OAuth2 access token)
 async function sendFcmPush(
   supabase: ReturnType<typeof createClient>,
   userId: string,
@@ -501,13 +572,16 @@ async function sendFcmPush(
       return;
     }
 
+    // Obtain OAuth2 access token from service account
+    const accessToken = await getGoogleAccessToken(fcmServiceAccount);
+
     const { response, retries } = await retryFetch(
       `https://fcm.googleapis.com/v1/projects/${gcpProjectId}/messages:send`,
       {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${fcmServiceAccount}`,
+          'Authorization': `Bearer ${accessToken}`,
         },
         body: JSON.stringify({
           message: {
