@@ -92,24 +92,25 @@ export function useVerificationQueue(): UseVerificationQueueState & UseVerificat
       // Patent 3 Claim 1(c): Fetch pending verification items
       const { data, error: fetchError } = await supabase
         .from('verification_queue')
-        .select('*')
-        .eq('state', 'pending')
+        .select('*, measurement_states!inner(session_id, state, confidence_score, predicted_value)')
+        .eq('review_state', 'pending')
         .order('created_at', { ascending: false });
 
       if (fetchError) throw fetchError;
 
       // Transform DB rows to UI-friendly format
+      // verification_queue has: id, measurement_state_id, token, review_state, reviewer_id, reviewed_at, response_type, created_at
+      // measurement_states (joined): session_id, state, confidence_score, predicted_value
       const entries = (data || []).map((item: any) => ({
         id: item.id,
         token: item.token,
-        sessionId: item.session_id,
-        measurementId: item.measurement_id,
-        measurementType: item.measurement_type,
-        confidenceScore: item.confidence_score,
-        predictedValue: item.predicted_value,
-        unit: item.unit,
+        sessionId: item.measurement_states?.session_id ?? '',
+        measurementId: item.measurement_state_id,
+        measurementType: item.measurement_states?.state ?? 'pending_verification',
+        confidenceScore: item.measurement_states?.confidence_score ?? 0,
+        predictedValue: item.measurement_states?.predicted_value ?? {},
+        unit: '',
         capturedAt: item.created_at,
-        expiresAt: item.expires_at,
       }));
 
       setItems(entries);
@@ -138,7 +139,7 @@ export function useVerificationQueue(): UseVerificationQueueState & UseVerificat
           event: '*',
           schema: 'public',
           table: 'verification_queue',
-          filter: "state=eq.pending",
+          filter: "review_state=eq.pending",
         },
         (payload) => {
           logger.info('Verification queue update received', {
