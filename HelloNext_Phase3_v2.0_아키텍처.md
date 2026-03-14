@@ -1445,6 +1445,12 @@ graph TD
 
     DB --> AUTH --> LAYOUT
     AUTH --> M16 --> VFC --> VTR --> FAB
+
+%% 2026-03-14 maintenance note:
+%% - voice-transcribe cache transition key aligned to voice_memo_cache.memo_id
+%% - voice-fsm-controller initCache aligned to current schema by populating audio_blob_ref
+%% - fsm-client cache read target corrected from voice_fsm_cache to voice_memo_cache
+%% - remaining blocker for local E2E proof is Edge JWT/runtime validation, not the repaired state-transition mapping
     LAYOUT --> DASH
     AUTH --> M09 --> MCE --> CAMERA --> CONF
     AUTH --> PAY

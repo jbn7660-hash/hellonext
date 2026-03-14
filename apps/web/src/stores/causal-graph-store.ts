@@ -15,8 +15,8 @@ import type {
   CausalGraphEdge,
   IISResult,
   DependencyModel,
-} from '@hellonext/shared/types';
-import type { AnalysisProgress } from '@hellonext/shared/types';
+  AnalysisProgress,
+} from '@hellonext/shared';
 
 interface CausalGraphStoreState {
   // Data

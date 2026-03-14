@@ -1,6 +1,3 @@
-[project]
-id = "hellonext"
-
 [api]
 enabled = true
 port = 54321
@@ -34,3 +31,9 @@ redirect_uri = "http://localhost:54321/auth/v1/callback"
 
 [realtime]
 enabled = true
+
+[functions.voice-fsm-controller]
+verify_jwt = false
+
+[functions.voice-transcribe]
+verify_jwt = false

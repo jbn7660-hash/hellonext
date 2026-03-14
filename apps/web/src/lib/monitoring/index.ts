@@ -1,6 +1,10 @@
 // 모니터링 및 관찰성 모듈 내보내기
 // Sentry, 경고, 헬스체크, 메트릭 통합
 
+// 로컬 사용을 위한 import (re-export만으로는 로컬 스코프에 바인딩되지 않음)
+import { initSentry, capturePatentEvent } from './sentry-config';
+import { performHealthCheck } from './health-check';
+
 // Sentry 설정
 export {
   initSentry,

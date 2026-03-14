@@ -11,6 +11,8 @@ export * from './constants/swing-positions';
 export * from './types/report';
 export * from './types/pose';
 export * from './types/coupon';
+export * from './types/payment';
+export * from './types/subscription';
 export * from './validators/voice-memo';
 export * from './validators/coupon-code';
 
@@ -32,6 +34,10 @@ export * from './types/verification';
 
 // Types — Voice FSM (Patent 4)
 export * from './types/voice-memo-cache';
+
+// Types — Payment & Subscription
+export * from './types/payment';
+export * from './types/subscription';
 
 // Validators
 export * from './validators/fsm-transition';

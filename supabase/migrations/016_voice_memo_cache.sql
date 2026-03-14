@@ -69,6 +69,10 @@ BEGIN
     INTO allowed
     FROM jsonb_array_elements_text(valid_transitions -> OLD.state) AS elem;
 
+    IF allowed IS NULL OR array_length(allowed, 1) IS NULL THEN
+        RAISE EXCEPTION 'DC-5 VIOLATION: No valid transitions defined from state %', OLD.state;
+    END IF;
+
     IF NOT (NEW.state = ANY(allowed)) THEN
         RAISE EXCEPTION 'DC-5 VIOLATION: Invalid transition from % to % (Patent 4 Claim 1)', OLD.state, NEW.state;
     END IF;

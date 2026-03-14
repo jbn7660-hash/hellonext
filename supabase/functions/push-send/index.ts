@@ -39,14 +39,10 @@ serve(async (req: Request) => {
   try {
     // ── Auth (Service Role only) ──────────────
     const authHeader = req.headers.get('Authorization');
-    if (!authHeader?.includes(SUPABASE_SERVICE_KEY)) {
-      // Verify user auth
-      const supabaseUser = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
-      const token = authHeader?.replace('Bearer ', '') || '';
-      const { data: { user } } = await supabaseUser.auth.getUser(token);
-      if (!user) {
-        return jsonResponse({ error: '인증 필요' }, 401);
-      }
+    const bearerToken = authHeader?.replace('Bearer ', '') || '';
+
+    if (bearerToken !== SUPABASE_SERVICE_KEY) {
+      return jsonResponse({ error: '서비스 역할 인증 필요' }, 401);
     }
 
     const payload: PushPayload = await req.json();
@@ -135,7 +131,7 @@ serve(async (req: Request) => {
         body,
         type: type || 'system',
         data: data || {},
-        read: false,
+        is_read: false,
       }))
     );
 

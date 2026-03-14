@@ -65,7 +65,8 @@ CREATE POLICY pro_own_update ON public.pro_profiles
 -- Member Profiles: own + pro can read linked members
 -- ==========================================
 CREATE POLICY member_own ON public.member_profiles
-    FOR ALL USING (user_id = auth.uid());
+    FOR ALL USING (user_id = auth.uid())
+    WITH CHECK (user_id = auth.uid());
 
 CREATE POLICY member_pro_read ON public.member_profiles
     FOR SELECT USING (
@@ -80,7 +81,8 @@ CREATE POLICY member_pro_read ON public.member_profiles
 -- Pro-Member Links
 -- ==========================================
 CREATE POLICY links_pro_all ON public.pro_member_links
-    FOR ALL USING (pro_id = public.get_my_pro_id());
+    FOR ALL USING (pro_id = public.get_my_pro_id())
+    WITH CHECK (pro_id = public.get_my_pro_id());
 
 CREATE POLICY links_member_select ON public.pro_member_links
     FOR SELECT USING (member_id = public.get_my_member_id());
@@ -89,13 +91,15 @@ CREATE POLICY links_member_select ON public.pro_member_links
 -- Voice Memos: pro only
 -- ==========================================
 CREATE POLICY memos_pro ON public.voice_memos
-    FOR ALL USING (pro_id = public.get_my_pro_id());
+    FOR ALL USING (pro_id = public.get_my_pro_id())
+    WITH CHECK (pro_id = public.get_my_pro_id());
 
 -- ==========================================
 -- Reports: pro full, member read
 -- ==========================================
 CREATE POLICY reports_pro ON public.reports
-    FOR ALL USING (pro_id = public.get_my_pro_id());
+    FOR ALL USING (pro_id = public.get_my_pro_id())
+    WITH CHECK (pro_id = public.get_my_pro_id());
 
 CREATE POLICY reports_member_read ON public.reports
     FOR SELECT USING (member_id = public.get_my_member_id());
@@ -109,7 +113,8 @@ CREATE POLICY reports_member_update_read ON public.reports
 -- Swing Videos: member own + pro read linked
 -- ==========================================
 CREATE POLICY videos_member_own ON public.swing_videos
-    FOR ALL USING (member_id = public.get_my_member_id());
+    FOR ALL USING (member_id = public.get_my_member_id())
+    WITH CHECK (member_id = public.get_my_member_id());
 
 CREATE POLICY videos_pro_read ON public.swing_videos
     FOR SELECT USING (
@@ -145,7 +150,8 @@ CREATE POLICY pose_pro_read ON public.pose_data
 -- Feel Checks: member own + pro read
 -- ==========================================
 CREATE POLICY feel_member_own ON public.feel_checks
-    FOR ALL USING (member_id = public.get_my_member_id());
+    FOR ALL USING (member_id = public.get_my_member_id())
+    WITH CHECK (member_id = public.get_my_member_id());
 
 CREATE POLICY feel_pro_read ON public.feel_checks
     FOR SELECT USING (
@@ -176,7 +182,8 @@ CREATE POLICY obs_pro_read ON public.ai_observations
 -- AI Scope Settings: pro manages, member can read own
 -- ==========================================
 CREATE POLICY scope_pro ON public.ai_scope_settings
-    FOR ALL USING (pro_id = public.get_my_pro_id());
+    FOR ALL USING (pro_id = public.get_my_pro_id())
+    WITH CHECK (pro_id = public.get_my_pro_id());
 
 CREATE POLICY scope_member_read ON public.ai_scope_settings
     FOR SELECT USING (member_id = public.get_my_member_id());
@@ -185,7 +192,8 @@ CREATE POLICY scope_member_read ON public.ai_scope_settings
 -- Coupons: pro manages
 -- ==========================================
 CREATE POLICY coupons_pro ON public.coupons
-    FOR ALL USING (pro_id = public.get_my_pro_id());
+    FOR ALL USING (pro_id = public.get_my_pro_id())
+    WITH CHECK (pro_id = public.get_my_pro_id());
 
 -- Member can read assigned coupons
 CREATE POLICY coupons_member_read ON public.coupons
@@ -195,7 +203,8 @@ CREATE POLICY coupons_member_read ON public.coupons
 -- Coupon Redemptions: member own
 -- ==========================================
 CREATE POLICY redemptions_member ON public.coupon_redemptions
-    FOR ALL USING (member_id = public.get_my_member_id());
+    FOR ALL USING (member_id = public.get_my_member_id())
+    WITH CHECK (member_id = public.get_my_member_id());
 
 -- Pro can read redemptions for their coupons
 CREATE POLICY redemptions_pro_read ON public.coupon_redemptions
@@ -210,25 +219,29 @@ CREATE POLICY redemptions_pro_read ON public.coupon_redemptions
 -- Subscriptions: pro own
 -- ==========================================
 CREATE POLICY subscriptions_pro ON public.subscriptions
-    FOR ALL USING (pro_id = public.get_my_pro_id());
+    FOR ALL USING (pro_id = public.get_my_pro_id())
+    WITH CHECK (pro_id = public.get_my_pro_id());
 
 -- ==========================================
 -- Payments: own only
 -- ==========================================
 CREATE POLICY payments_own ON public.payments
-    FOR ALL USING (user_id = auth.uid());
+    FOR ALL USING (user_id = auth.uid())
+    WITH CHECK (user_id = auth.uid());
 
 -- ==========================================
 -- Notifications: own only
 -- ==========================================
 CREATE POLICY notif_own ON public.notifications
-    FOR ALL USING (user_id = auth.uid());
+    FOR ALL USING (user_id = auth.uid())
+    WITH CHECK (user_id = auth.uid());
 
 -- ==========================================
 -- Glossary Terms: pro own
 -- ==========================================
 CREATE POLICY glossary_pro ON public.glossary_terms
-    FOR ALL USING (pro_id = public.get_my_pro_id());
+    FOR ALL USING (pro_id = public.get_my_pro_id())
+    WITH CHECK (pro_id = public.get_my_pro_id());
 
 -- ROLLBACK:
 -- (drop all policies and disable RLS - omitted for brevity, use supabase migration repair)

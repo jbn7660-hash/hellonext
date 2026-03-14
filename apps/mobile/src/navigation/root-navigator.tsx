@@ -27,6 +27,7 @@ import { ProDashboardScreen } from '@/screens/pro/dashboard-screen';
 import { ProMembersScreen } from '@/screens/pro/members-screen';
 import { ProReportsScreen } from '@/screens/pro/reports-screen';
 import { ProSettingsScreen } from '@/screens/pro/settings-screen';
+import { TestDriveScreen } from '@/screens/test/test-drive-screen';
 
 // ============================================================
 // Navigator Types
@@ -34,6 +35,7 @@ import { ProSettingsScreen } from '@/screens/pro/settings-screen';
 export type AuthStackParamList = {
   Login: undefined;
   Onboarding: { provider?: string };
+  TestDrive: undefined;
 };
 
 export type MemberTabParamList = {
@@ -78,6 +80,11 @@ function AuthNavigator() {
     >
       <AuthStack.Screen name="Login" component={LoginScreen} />
       <AuthStack.Screen name="Onboarding" component={OnboardingScreen} />
+      <AuthStack.Screen
+        name="TestDrive"
+        component={TestDriveScreen}
+        options={{ headerShown: true, title: '테스트 드라이브' }}
+      />
     </AuthStack.Navigator>
   );
 }

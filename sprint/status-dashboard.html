@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HelloNext Sprint 2 Dashboard</title>
+    <style>
+      :root {
+        --bg: #0b1020;
+        --panel: #121a2f;
+        --panel-2: #18233d;
+        --text: #eef2ff;
+        --muted: #a8b3cf;
+        --green: #22c55e;
+        --yellow: #f59e0b;
+        --red: #ef4444;
+        --blue: #60a5fa;
+        --line: #2a3657;
+      }
+
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        background: linear-gradient(180deg, #0b1020 0%, #0f172a 100%);
+        color: var(--text);
+        line-height: 1.5;
+      }
+
+      .wrap {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 24px 16px 56px;
+      }
+
+      .hero {
+        background: linear-gradient(135deg, #172554, #0f766e);
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 20px;
+        padding: 24px;
+        margin-bottom: 18px;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+      }
+
+      h1, h2, h3, p { margin: 0; }
+      h1 { font-size: 28px; margin-bottom: 8px; }
+      .sub { color: #dbeafe; opacity: 0.92; }
+
+      .grid {
+        display: grid;
+        gap: 16px;
+      }
+
+      .grid-4 {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+
+      .grid-2 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .card {
+        background: rgba(18, 26, 47, 0.92);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        padding: 18px;
+      }
+
+      .label {
+        color: var(--muted);
+        font-size: 13px;
+        margin-bottom: 8px;
+      }
+
+      .value {
+        font-size: 22px;
+        font-weight: 700;
+      }
+
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        font-size: 13px;
+        font-weight: 600;
+        margin-top: 8px;
+      }
+
+      .pill.green { background: rgba(34,197,94,0.14); color: #86efac; }
+      .pill.yellow { background: rgba(245,158,11,0.14); color: #fcd34d; }
+      .pill.blue { background: rgba(96,165,250,0.14); color: #93c5fd; }
+      .pill.red { background: rgba(239,68,68,0.14); color: #fca5a5; }
+
+      .section-title {
+        font-size: 18px;
+        margin: 10px 0 12px;
+      }
+
+      ul {
+        margin: 10px 0 0;
+        padding-left: 18px;
+        color: var(--text);
+      }
+
+      li + li { margin-top: 6px; }
+      .muted { color: var(--muted); }
+
+      .progress {
+        width: 100%;
+        height: 12px;
+        background: #0f172a;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        overflow: hidden;
+        margin-top: 10px;
+      }
+
+      .progress > div {
+        height: 100%;
+        width: 78%;
+        background: linear-gradient(90deg, #22c55e, #60a5fa);
+      }
+
+      .flow {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+        margin-top: 12px;
+      }
+
+      .node {
+        padding: 12px 14px;
+        border-radius: 14px;
+        border: 1px solid var(--line);
+        background: var(--panel-2);
+        min-width: 150px;
+        text-align: center;
+        font-size: 14px;
+        font-weight: 600;
+      }
+
+      .node.done { border-color: rgba(34,197,94,0.55); background: rgba(34,197,94,0.12); }
+      .node.now { border-color: rgba(245,158,11,0.55); background: rgba(245,158,11,0.12); }
+      .node.next { border-color: rgba(148,163,184,0.35); background: rgba(148,163,184,0.08); }
+      .arrow { color: var(--muted); font-size: 20px; }
+
+      .board {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 14px;
+      }
+
+      .col {
+        background: rgba(15, 23, 42, 0.65);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 14px;
+      }
+
+      .col h3 {
+        font-size: 15px;
+        margin-bottom: 10px;
+      }
+
+      .tag {
+        display: inline-block;
+        font-size: 12px;
+        padding: 4px 8px;
+        border-radius: 999px;
+        margin-bottom: 10px;
+      }
+
+      .tag.done { background: rgba(34,197,94,0.14); color: #86efac; }
+      .tag.progress { background: rgba(245,158,11,0.14); color: #fcd34d; }
+      .tag.next { background: rgba(96,165,250,0.14); color: #93c5fd; }
+      .tag.risk { background: rgba(239,68,68,0.14); color: #fca5a5; }
+
+      .footer {
+        margin-top: 18px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      @media (max-width: 900px) {
+        .grid-4, .grid-2, .board { grid-template-columns: 1fr; }
+        .flow { flex-direction: column; align-items: stretch; }
+        .arrow { text-align: center; transform: rotate(90deg); }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <section class="hero">
+        <h1>HelloNext Sprint 2 Dashboard</h1>
+        <p class="sub">현재 개발현황을 한눈에 보기 위한 개인용 상태 페이지</p>
+        <div class="pill yellow">현재 단계: PR-1 External Dependency Validation</div>
+      </section>
+
+      <section class="grid grid-4">
+        <div class="card">
+          <div class="label">Branch</div>
+          <div class="value">sprint-2-core-loop</div>
+        </div>
+        <div class="card">
+          <div class="label">Overall status</div>
+          <div class="value">In progress</div>
+          <div class="pill green">핵심 smoke 구현 완료</div>
+        </div>
+        <div class="card">
+          <div class="label">Current goal</div>
+          <div class="value">PR-1 close</div>
+        </div>
+        <div class="card">
+          <div class="label">Next major step</div>
+          <div class="value">Edge Function rollout</div>
+        </div>
+      </section>
+
+      <section class="card" style="margin-top:16px;">
+        <div class="section-title">Sprint progress</div>
+        <div class="muted">외부 의존성 검증 단계 기준 진행률</div>
+        <div class="progress"><div></div></div>
+      </section>
+
+      <section class="grid grid-2" style="margin-top:16px;">
+        <div class="card">
+          <div class="section-title">Done</div>
+          <ul>
+            <li>Sprint 2 kickoff docs / tracker 정리</li>
+            <li>로컬 빌드용 Sentry 업로드 우회</li>
+            <li><code>/api/smoke</code> 기본 route 추가</li>
+            <li>OpenAI Whisper 실제 smoke check 구현</li>
+            <li>Cloudinary 실제 업로드 smoke check 구현</li>
+            <li>PR 제목/본문/커밋 메시지 초안 작성</li>
+          </ul>
+        </div>
+        <div class="card">
+          <div class="section-title">Now / Next</div>
+          <ul>
+            <li><strong>Now:</strong> PR-1 마감 정리</li>
+            <li><strong>Next:</strong> Edge Function 배포 시작</li>
+            <li><strong>After:</strong> 음성 → 전사 → 구조화 → 리포트 E2E 검증</li>
+          </ul>
+          <div class="pill blue">판단: 지금은 EF보다 PR-1 close가 우선</div>
+        </div>
+      </section>
+
+      <section class="card" style="margin-top:16px;">
+        <div class="section-title">Current position flow</div>
+        <div class="flow">
+          <div class="node done">Sprint 2 kickoff</div>
+          <div class="arrow">→</div>
+          <div class="node done">Smoke route skeleton</div>
+          <div class="arrow">→</div>
+          <div class="node done">OpenAI Whisper smoke</div>
+          <div class="arrow">→</div>
+          <div class="node done">Cloudinary upload smoke</div>
+          <div class="arrow">→</div>
+          <div class="node now">PR-1 close</div>
+          <div class="arrow">→</div>
+          <div class="node next">Edge Function deploy</div>
+        </div>
+      </section>
+
+      <section class="card" style="margin-top:16px;">
+        <div class="section-title">Dependency validation flow</div>
+        <div class="flow">
+          <div class="node">Developer / local app</div>
+          <div class="arrow">→</div>
+          <div class="node">/api/smoke</div>
+          <div class="arrow">→</div>
+          <div class="node">X-Smoke-Token auth</div>
+          <div class="arrow">→</div>
+          <div class="node">OpenAI transcription</div>
+          <div class="arrow">+</div>
+          <div class="node">Cloudinary upload</div>
+          <div class="arrow">→</div>
+          <div class="node now">PR-1 closable</div>
+        </div>
+      </section>
+
+      <section style="margin-top:16px;">
+        <div class="section-title">Work board</div>
+        <div class="board">
+          <div class="col">
+            <div class="tag done">Done</div>
+            <ul>
+              <li>Kickoff docs</li>
+              <li>Local build unblock</li>
+              <li>Smoke route</li>
+              <li>Whisper smoke</li>
+              <li>Cloudinary smoke</li>
+            </ul>
+          </div>
+          <div class="col">
+            <div class="tag progress">In progress</div>
+            <ul>
+              <li>PR-1 final review</li>
+              <li>PR packaging</li>
+            </ul>
+          </div>
+          <div class="col">
+            <div class="tag next">Next</div>
+            <ul>
+              <li>PR-1 close</li>
+              <li>Edge Function deployment</li>
+            </ul>
+          </div>
+          <div class="col">
+            <div class="tag risk">Risks</div>
+            <ul>
+              <li>Cloudinary smoke artifacts accumulate</li>
+              <li>실 env 값 없으면 end-to-end 확인 불가</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="grid grid-2" style="margin-top:16px;">
+        <div class="card">
+          <div class="section-title">Required env</div>
+          <ul>
+            <li><code>SMOKE_TOKEN</code></li>
+            <li><code>OPENAI_API_KEY</code></li>
+            <li><code>CLOUDINARY_CLOUD_NAME</code></li>
+            <li><code>CLOUDINARY_API_KEY</code></li>
+            <li><code>CLOUDINARY_API_SECRET</code></li>
+          </ul>
+        </div>
+        <div class="card">
+          <div class="section-title">Expert recommendation</div>
+          <ul>
+            <li>지금은 PR-1을 닫는 게 우선</li>
+            <li>그 다음 EF 배포로 넘어가는 순서가 맞음</li>
+            <li>현 상태에서 방향성은 안정적</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="footer">
+        HelloNext private dashboard · mobile-friendly · static HTML
+      </div>
+    </div>
+  </body>
+</html>

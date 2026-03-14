@@ -10,7 +10,8 @@
     "typecheck": "turbo typecheck",
     "test": "turbo test",
     "clean": "turbo clean",
-    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,css,md}\""
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,css,md}\"",
+    "smoke:deps": "node scripts/smoke-pr1.mjs"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",

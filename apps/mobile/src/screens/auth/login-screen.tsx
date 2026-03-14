@@ -17,10 +17,14 @@ import {
   Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { signInWithKakao, supabase } from '@/lib/supabase/client';
+import { signInWithKakao } from '@/lib/supabase/client';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { AuthStackParamList } from '@/navigation/root-navigator';
 
 export function LoginScreen() {
   const [isLoading, setIsLoading] = useState(false);
+  const navigation = useNavigation<NativeStackNavigationProp<AuthStackParamList>>();
 
   const handleKakaoLogin = async () => {
     try {
@@ -46,6 +50,10 @@ export function LoginScreen() {
   const handleEmailLogin = async () => {
     // TODO: Implement email login flow
     Alert.alert('준비 중', '이메일 로그인은 준비 중입니다.');
+  };
+
+  const handleTestDrive = () => {
+    navigation.navigate('TestDrive');
   };
 
   return (
@@ -99,6 +107,22 @@ export function LoginScreen() {
           <Text style={styles.termsLink}>서비스 이용약관</Text>과{' '}
           <Text style={styles.termsLink}>개인정보 처리방침</Text>에 동의하게 됩니다.
         </Text>
+
+        <View style={styles.divider} />
+
+        {/* Test Drive (no auth) */}
+        <TouchableOpacity
+          style={styles.testDriveButton}
+          onPress={handleTestDrive}
+          activeOpacity={0.9}
+        >
+          <Text style={styles.testDriveIcon}>⚡</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.testDriveTitle}>테스트 드라이브</Text>
+            <Text style={styles.testDriveSubtitle}>로그인 없이 바로 음성 메모 테스트</Text>
+          </View>
+          <Text style={styles.testDriveChevron}>›</Text>
+        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
@@ -194,4 +218,23 @@ const styles = StyleSheet.create({
     color: '#22c55e',
     textDecorationLine: 'underline',
   },
+  divider: {
+    marginVertical: 16,
+    height: 1,
+    backgroundColor: '#e5e7eb',
+  },
+  testDriveButton: {
+    backgroundColor: '#ecfdf3',
+    borderRadius: 14,
+    padding: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderWidth: 1,
+    borderColor: '#bbf7d0',
+  },
+  testDriveIcon: { fontSize: 18 },
+  testDriveTitle: { fontSize: 15, fontWeight: '700', color: '#166534' },
+  testDriveSubtitle: { fontSize: 12, color: '#166534' },
+  testDriveChevron: { fontSize: 22, color: '#166534', paddingHorizontal: 4 },
 });

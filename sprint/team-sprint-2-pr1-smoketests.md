@@ -80,6 +80,14 @@ curl -sS \
   http://localhost:3000/api/smoke | jq
 ```
 
+CLI shortcut (uses the same header, exits non-zero on failure):
+
+```bash
+pnpm smoke:deps
+# override target if running against staging:
+SMOKE_URL=https://staging.hellonext.app/api/smoke pnpm smoke:deps
+```
+
 Expected success shape:
 
 ```json

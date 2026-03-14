@@ -11,6 +11,7 @@
  */
 
 import { createServerClient } from '@supabase/ssr';
+import type { CookieOptions } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import type { Database } from './types';
 
@@ -41,7 +42,7 @@ export async function createClient(request: NextRequest) {
       getAll() {
         return request.cookies.getAll();
       },
-      setAll(cookiesToSet) {
+      setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
         // Set cookies on the request for downstream Server Components
         cookiesToSet.forEach(({ name, value }) =>
           request.cookies.set(name, value)

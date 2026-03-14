@@ -42,7 +42,7 @@ CREATE INDEX idx_transcription_jobs_memo ON transcription_jobs(voice_memo_id);
 CREATE TRIGGER trg_transcription_jobs_updated_at
   BEFORE UPDATE ON transcription_jobs
   FOR EACH ROW
-  EXECUTE FUNCTION update_push_tokens_timestamp();
+  EXECUTE FUNCTION handle_updated_at();
 
 -- ============================================================
 -- RLS Policies

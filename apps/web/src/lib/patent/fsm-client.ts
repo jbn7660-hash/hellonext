@@ -270,7 +270,7 @@ export async function recoverFsm(
 
 /**
  * Get the current FSM state from cache without triggering transitions.
- * Fetches directly from voice_fsm_cache to inspect recovery options.
+ * Fetches directly from voice_memo_cache to inspect recovery options.
  *
  * @param memoId - Voice memo ID
  * @returns Current FSM state and metadata or null if cache not found
@@ -288,7 +288,7 @@ export async function getCurrentFsmState(
     const supabase = createClient();
 
     const { data, error } = await supabase
-      .from('voice_fsm_cache')
+      .from('voice_memo_cache')
       .select('state, target_id, transcription_job_id, transcript')
       .eq('memo_id', memoId)
       .single();

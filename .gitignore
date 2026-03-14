@@ -37,3 +37,16 @@ supabase/.branches/
 
 # Testing
 coverage/
+
+# Agent sessions
+.agent-sessions/
+
+# Voice transcribe env (contains secrets)
+supabase/functions/voice-transcribe/.env.voice-transcribe
+supabase/functions/.env.local-edge
+
+# Test audio files
+tmp-test-tone.*
+
+# Temp smoke scripts with secrets
+scripts/tmp_*
