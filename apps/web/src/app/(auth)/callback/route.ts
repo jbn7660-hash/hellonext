@@ -83,10 +83,10 @@ export async function GET(request: NextRequest) {
     if (proProfile) {
       // Pro user exists — check if onboarding is complete
       if (!proProfile.studio_name) {
-        return NextResponse.redirect(new URL('/(pro)/onboarding', origin));
+        return NextResponse.redirect(new URL('/onboarding', origin));
       }
       // Existing pro user — redirect to dashboard or next param
-      const targetUrl = nextParam ? decodeURIComponent(nextParam) : '/(pro)/dashboard';
+      const targetUrl = nextParam ? decodeURIComponent(nextParam) : '/dashboard';
       return NextResponse.redirect(new URL(targetUrl, origin));
     }
 
@@ -107,14 +107,14 @@ export async function GET(request: NextRequest) {
 
     if (memberProfile) {
       // Existing member user — redirect to swingbook or next param
-      const targetUrl = nextParam ? decodeURIComponent(nextParam) : '/(member)/swingbook';
+      const targetUrl = nextParam ? decodeURIComponent(nextParam) : '/swingbook';
       return NextResponse.redirect(new URL(targetUrl, origin));
     }
 
     // New user with no profile — they'll be created by trigger
     // Redirect to role-based onboarding determined by signup flow
     // For now, default to member onboarding (can be enhanced)
-    return NextResponse.redirect(new URL('/(member)/swingbook', origin));
+    return NextResponse.redirect(new URL('/swingbook', origin));
   } catch (err) {
     const loginUrl = new URL('/login', origin);
     loginUrl.searchParams.set('error', encodeURIComponent('unexpected_error'));
