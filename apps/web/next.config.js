@@ -135,8 +135,7 @@ const nextConfig = {
   // Cache and TypeScript settings
   cacheMaxMemorySize: 50 * 1024 * 1024, // 50MB
   typescript: {
-    // Skip type checking during build — validated separately via `pnpm typecheck`
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
 
   // Environment variable prefix for public variables

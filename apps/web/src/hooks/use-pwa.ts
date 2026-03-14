@@ -74,7 +74,7 @@ export function useServiceWorker() {
     registerSW();
 
     // Listen for controller change (after update)
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
+    navigator.serviceWorker?.addEventListener('controllerchange', () => {
       console.log('[PWA] Controller changed, reloading...');
       // Optionally reload on update
     });

@@ -48,21 +48,28 @@ const mockNavigator = {
 beforeEach(() => {
   vi.resetModules();
 
-  // Setup navigator mock
-  Object.defineProperty(global, 'navigator', {
-    value: { ...mockNavigator },
+  // Setup navigator mock — add serviceWorker to existing navigator
+  Object.defineProperty(navigator, 'serviceWorker', {
+    value: {
+      register: vi.fn().mockResolvedValue(mockSWRegistration),
+      controller: null,
+      addEventListener: vi.fn(),
+    },
+    writable: true,
+    configurable: true,
+  });
+  Object.defineProperty(navigator, 'onLine', {
+    value: true,
     writable: true,
     configurable: true,
   });
 
-  // Setup window mocks
-  Object.defineProperty(global, 'window', {
-    value: {
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-      matchMedia: vi.fn().mockReturnValue({ matches: false }),
-      location: { reload: vi.fn() },
-    },
+  // Setup window mocks — patch existing window, don't replace it
+  window.matchMedia = vi.fn().mockReturnValue({ matches: false }) as any;
+  vi.spyOn(window, 'addEventListener');
+  vi.spyOn(window, 'removeEventListener');
+  Object.defineProperty(window, 'location', {
+    value: { ...window.location, reload: vi.fn() },
     writable: true,
     configurable: true,
   });
@@ -95,7 +102,7 @@ describe('PWA Hooks', () => {
 
       // Wait for async registration
       await vi.waitFor(() => {
-        expect(mockNavigator.serviceWorker.register).toHaveBeenCalledWith('/sw.js', {
+        expect(navigator.serviceWorker.register).toHaveBeenCalledWith('/sw.js', {
           scope: '/',
           updateViaCache: 'none',
         });
@@ -104,8 +111,8 @@ describe('PWA Hooks', () => {
 
     it('should detect when service worker is not supported', async () => {
       // Remove serviceWorker from navigator
-      Object.defineProperty(global, 'navigator', {
-        value: { onLine: true },
+      Object.defineProperty(navigator, 'serviceWorker', {
+        value: undefined,
         writable: true,
         configurable: true,
       });
@@ -119,16 +126,7 @@ describe('PWA Hooks', () => {
 
   describe('useInstallPrompt', () => {
     it('should detect standalone mode (already installed)', async () => {
-      Object.defineProperty(global, 'window', {
-        value: {
-          ...global.window,
-          matchMedia: vi.fn().mockReturnValue({ matches: true }), // standalone
-          addEventListener: vi.fn(),
-          removeEventListener: vi.fn(),
-        },
-        writable: true,
-        configurable: true,
-      });
+      window.matchMedia = vi.fn().mockReturnValue({ matches: true }) as any;
 
       const { useInstallPrompt } = await import('@/hooks/use-pwa');
       const { result } = renderHook(() => useInstallPrompt());
@@ -140,17 +138,10 @@ describe('PWA Hooks', () => {
     it('should capture beforeinstallprompt event', async () => {
       let capturedHandler: ((e: Event) => void) | null = null;
 
-      Object.defineProperty(global, 'window', {
-        value: {
-          ...global.window,
-          matchMedia: vi.fn().mockReturnValue({ matches: false }),
-          addEventListener: vi.fn((event: string, handler: any) => {
-            if (event === 'beforeinstallprompt') capturedHandler = handler;
-          }),
-          removeEventListener: vi.fn(),
-        },
-        writable: true,
-        configurable: true,
+      const origAddEventListener = window.addEventListener.bind(window);
+      vi.spyOn(window, 'addEventListener').mockImplementation((event: string, handler: any, options?: any) => {
+        if (event === 'beforeinstallprompt') capturedHandler = handler;
+        return origAddEventListener(event, handler, options);
       });
 
       const { useInstallPrompt } = await import('@/hooks/use-pwa');
@@ -184,16 +175,10 @@ describe('PWA Hooks', () => {
     it('should update when going offline', async () => {
       let offlineHandler: (() => void) | null = null;
 
-      Object.defineProperty(global, 'window', {
-        value: {
-          ...global.window,
-          addEventListener: vi.fn((event: string, handler: any) => {
-            if (event === 'offline') offlineHandler = handler;
-          }),
-          removeEventListener: vi.fn(),
-        },
-        writable: true,
-        configurable: true,
+      const origAddEventListener = window.addEventListener.bind(window);
+      vi.spyOn(window, 'addEventListener').mockImplementation((event: string, handler: any, options?: any) => {
+        if (event === 'offline') offlineHandler = handler;
+        return origAddEventListener(event, handler, options);
       });
 
       const { useOnlineStatus } = await import('@/hooks/use-pwa');
