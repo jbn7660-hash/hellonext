@@ -152,11 +152,11 @@ function recalculateConfidence(
   correctedValues: CorrectedMeasurement,
   k: number
 ): number {
-  const keypointVis = correctedValues.keypoint_visibility ?? Number(baseSpatialData.keypoint_visibility) || 0;
-  const camAngle = correctedValues.camera_angle_quality ?? Number(baseSpatialData.camera_angle_quality) || 0;
+  const keypointVis = correctedValues.keypoint_visibility ?? (Number(baseSpatialData.keypoint_visibility) || 0);
+  const camAngle = correctedValues.camera_angle_quality ?? (Number(baseSpatialData.camera_angle_quality) || 0);
   const motionBlur =
-    1 - (correctedValues.motion_blur_factor ?? Number(baseSpatialData.motion_blur_factor) || 0);
-  const occlusion = 1 - (correctedValues.occlusion_factor ?? Number(baseSpatialData.occlusion_factor) || 0);
+    1 - (correctedValues.motion_blur_factor ?? (Number(baseSpatialData.motion_blur_factor) || 0));
+  const occlusion = 1 - (correctedValues.occlusion_factor ?? (Number(baseSpatialData.occlusion_factor) || 0));
 
   const rawConfidence = keypointVis * camAngle * motionBlur * occlusion;
   const confidence = rawConfidence * k;
