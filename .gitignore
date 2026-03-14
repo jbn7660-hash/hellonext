@@ -50,3 +50,4 @@ tmp-test-tone.*
 
 # Temp smoke scripts with secrets
 scripts/tmp_*
+.vercel
