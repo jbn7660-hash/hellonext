@@ -266,7 +266,7 @@ async function classifyAndStore(
         state: classification,
         confidence_score: result.confidence_score,
         predicted_value: { factors: result.factors },
-        review_state: classification === 'pending_verification' ? 'pending' : classification,
+        review_state: 'pending',
         issued_at: now,
         updated_at: now,
       })

@@ -287,7 +287,7 @@ async function handleVerification(
     .update({
       state: newReviewState,
       confidence_score: newConfidenceScore,
-      review_state: newReviewState,
+      review_state: 'reviewed',
       predicted_value: predictedValue,
       updated_at: new Date().toISOString(),
     })
@@ -303,7 +303,7 @@ async function handleVerification(
   const { error: tokenError } = await supabase
     .from('verification_queue')
     .update({
-      review_state: responseType === 'reject' ? 'rejected' : 'verified',
+      review_state: responseType === 'reject' ? 'rejected' : (responseType === 'correct' ? 'corrected' : 'confirmed'),
       response_type: responseType,
       reviewer_id: reviewerId || null,
       reviewed_at: new Date().toISOString(),
