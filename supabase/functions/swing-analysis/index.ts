@@ -7,7 +7,7 @@
  * 1. Receive pose_data (keypoints per frame) + feel_check + member_id
  * 2. Fetch AI scope settings (F-013) for the pro-member pair
  * 3. Compute swing metrics (joint angles, tempo, position markers)
- * 4. Generate AI observation via GPT-4o (Groq fallback) in "curious observer" tone
+ * 4. Generate AI observation via Groq (llama-3.3-70b-versatile) in "curious observer" tone
  * 5. Store ai_observation record + update swing_video status
  * 6. Broadcast result via Realtime
  *
@@ -43,27 +43,25 @@ interface AIScopeSettings {
   tone_level: 'observe_only' | 'gentle_suggest' | 'specific_guide';
 }
 
-const CHAT_API_URL = 'https://api.openai.com/v1/chat/completions';
 const GROQ_CHAT_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 
-function getGroqKey(): string | null {
-  return Deno.env.get('GROQ_API_KEY') ?? null;
+function getGroqKey(): string {
+  const key = Deno.env.get('GROQ_API_KEY');
+  if (!key) throw new Error('Missing GROQ_API_KEY');
+  return key;
 }
 
-async function callChatAPI(
-  url: string,
-  apiKey: string,
-  model: string,
+async function callGroqChat(
   messages: { role: string; content: string }[],
-): Promise<{ content: string; provider: 'openai' | 'groq' }> {
-  const response = await fetch(url, {
+): Promise<string> {
+  const response = await fetch(GROQ_CHAT_API_URL, {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${apiKey}`,
+      Authorization: `Bearer ${getGroqKey()}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model,
+      model: 'llama-3.3-70b-versatile',
       messages,
       response_format: { type: 'json_object' },
       temperature: 0.4,
@@ -73,15 +71,13 @@ async function callChatAPI(
 
   if (!response.ok) {
     const errorBody = await response.text();
-    const error = new Error(`Chat API error: ${response.status} - ${errorBody}`);
-    (error as Error & { status?: number }).status = response.status;
-    throw error;
+    throw new Error(`Groq Chat API error: ${response.status} - ${errorBody}`);
   }
 
   const result = await response.json();
   const content = result.choices?.[0]?.message?.content;
   if (!content) throw new Error('LLM returned empty response');
-  return { content, provider: url.includes('groq') ? 'groq' : 'openai' };
+  return content;
 }
 
 const OBSERVATION_SYSTEM_PROMPT = `당신은 골프 스윙을 "관찰"하는 AI 어시스턴트입니다.
@@ -190,44 +186,14 @@ serve(async (req: Request) => {
     // 3. Compute swing metrics from pose data
     const metrics = computeSwingMetrics(pose_data);
 
-    // 4. Generate AI observation (OpenAI → Groq fallback)
-    const openaiKey = Deno.env.get('OPENAI_API_KEY');
-    if (!openaiKey) throw new Error('Missing OPENAI_API_KEY');
-
+    // 4. Generate AI observation via Groq
     const userPrompt = buildAnalysisPrompt(metrics, feelCheck, scopeSettings);
     const messages = [
       { role: 'system', content: OBSERVATION_SYSTEM_PROMPT },
       { role: 'user', content: userPrompt },
     ];
 
-    let llmContent: string;
-
-    // Try OpenAI first
-    try {
-      const result = await callChatAPI(CHAT_API_URL, openaiKey, 'gpt-4o', messages);
-      llmContent = result.content;
-    } catch (err) {
-      const status = (err as Error & { status?: number }).status;
-      const isQuotaOrAuth = status === 429 || status === 402 || status === 401;
-      if (!isQuotaOrAuth) throw err;
-
-      console.warn(`OpenAI failed (${status}), attempting Groq fallback...`);
-
-      const groqKey = getGroqKey();
-      if (!groqKey) {
-        throw new Error(
-          'OpenAI quota exceeded and no GROQ_API_KEY configured for fallback'
-        );
-      }
-
-      const result = await callChatAPI(
-        GROQ_CHAT_API_URL,
-        groqKey,
-        'llama-3.3-70b-versatile',
-        messages,
-      );
-      llmContent = result.content;
-    }
+    const llmContent = await callGroqChat(messages);
 
     let observation;
     try {

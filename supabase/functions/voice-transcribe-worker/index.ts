@@ -37,7 +37,6 @@ interface VoiceMemoRow {
   status: string;
 }
 
-const WHISPER_API_URL = 'https://api.openai.com/v1/audio/transcriptions';
 const GROQ_WHISPER_API_URL = 'https://api.groq.com/openai/v1/audio/transcriptions';
 
 function createSupabaseAdmin() {
@@ -53,14 +52,10 @@ function createSupabaseAdmin() {
   return createClient(url, key);
 }
 
-function getOpenAIKey(): string {
-  const key = Deno.env.get('OPENAI_API_KEY');
-  if (!key) throw new Error('Missing OPENAI_API_KEY');
+function getGroqKey(): string {
+  const key = Deno.env.get('GROQ_API_KEY');
+  if (!key) throw new Error('Missing GROQ_API_KEY');
   return key;
-}
-
-function getGroqKey(): string | null {
-  return Deno.env.get('GROQ_API_KEY') ?? null;
 }
 
 function json(data: unknown, status = 200) {
@@ -147,77 +142,32 @@ interface TranscribeResult {
   text: string;
   language?: string;
   segments?: unknown[];
-  provider: 'openai' | 'groq';
+  provider: 'groq';
 }
 
-async function callWhisperAPI(
-  url: string,
-  apiKey: string,
-  model: string,
-  audioBlob: Blob,
-  filename: string,
-): Promise<TranscribeResult & { provider: 'openai' | 'groq' }> {
+async function transcribeAudio(audioBlob: Blob, filename: string, _mimeType: string): Promise<TranscribeResult> {
   const formData = new FormData();
   formData.append('file', audioBlob, filename);
-  formData.append('model', model);
+  formData.append('model', 'whisper-large-v3');
   formData.append('language', 'ko');
   formData.append('response_format', 'verbose_json');
 
-  const response = await fetch(url, {
+  const response = await fetch(GROQ_WHISPER_API_URL, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${apiKey}` },
+    headers: { Authorization: `Bearer ${getGroqKey()}` },
     body: formData,
   });
 
   if (!response.ok) {
     const body = await response.text();
-    const error = new Error(`Whisper API error: ${response.status} - ${body}`);
-    (error as Error & { status?: number }).status = response.status;
-    throw error;
+    throw new Error(`Groq Whisper API error: ${response.status} - ${body}`);
   }
 
   const json = await response.json();
   return {
     ...json,
-    provider: url.includes('groq') ? 'groq' : 'openai',
+    provider: 'groq',
   };
-}
-
-async function transcribeAudio(audioBlob: Blob, filename: string, _mimeType: string): Promise<TranscribeResult> {
-  // Try OpenAI Whisper first
-  try {
-    return await callWhisperAPI(
-      WHISPER_API_URL,
-      getOpenAIKey(),
-      'whisper-1',
-      audioBlob,
-      filename,
-    );
-  } catch (err) {
-    const status = (err as Error & { status?: number }).status;
-    const isQuotaOrAuth = status === 429 || status === 402 || status === 401;
-
-    // Only fallback on quota/billing errors, not on other failures
-    if (!isQuotaOrAuth) throw err;
-
-    console.warn(`OpenAI Whisper failed (${status}), attempting Groq fallback...`);
-  }
-
-  // Fallback to Groq Whisper
-  const groqKey = getGroqKey();
-  if (!groqKey) {
-    throw new Error(
-      'OpenAI Whisper quota exceeded and no GROQ_API_KEY configured for fallback'
-    );
-  }
-
-  return await callWhisperAPI(
-    GROQ_WHISPER_API_URL,
-    groqKey,
-    'whisper-large-v3',
-    audioBlob,
-    filename,
-  );
 }
 
 function inferMimeType(format: string | null): string {
@@ -267,7 +217,7 @@ async function processJob(supabase: SupabaseAdmin, job: TranscriptionJob) {
   const transcript = typeof transcription?.text === 'string' ? transcription.text : '';
   const language = typeof transcription?.language === 'string' ? transcription.language : 'ko';
   const segments = Array.isArray(transcription?.segments) ? transcription.segments : [];
-  const provider = transcription.provider ?? 'openai';
+  const provider = 'groq';
   const confidence = null;
   const completedAt = new Date().toISOString();
   const processingMs = Date.now() - startedAt;
@@ -281,7 +231,7 @@ async function processJob(supabase: SupabaseAdmin, job: TranscriptionJob) {
       segments,
       confidence,
       provider,
-      model: provider === 'groq' ? 'whisper-large-v3' : 'whisper-1',
+      model: 'whisper-large-v3',
       processing_ms: processingMs,
       completed_at: completedAt,
       error_message: null,
