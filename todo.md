@@ -173,21 +173,27 @@
 
 ---
 
-## Sprint 3: 회원 앱 + 신뢰도 (v0.3 Beta)
+## Sprint 3: 회원 앱 + 신뢰도 (v0.3 Beta) — 백엔드 완료 (2026-03-15)
 
-- [ ] swing-camera 컴포넌트 실 동작 (카메라 권한, 포즈 추정)
-- [ ] measurement-confidence Edge Function 실 테스트
-- [ ] 3단계 분류 (confirmed/pending/hidden) 검증
-- [ ] Feel Check → AI 관찰 생성 흐름
-- [ ] verification-queue → 프로 대시보드 표시
+- [x] measurement-confidence Edge Function: 5-factor 공식 동작, DB 스키마 정렬, Groq fallback
+- [x] 3단계 분류 (confirmed/pending/hidden) 검증: classifyAndStore → issueVerificationTokens 성공
+- [x] verification-handler: confirm/correct/reject 전체 동작 확인
+- [x] swing-analysis: Groq fallback 추가, DB 스키마 정렬
+- [x] Feel Check → AI 관찰 생성 흐름: practice/page.tsx 코드 검증 완료
+- [x] verification-queue → 프로 대시보드: verification-card.tsx 코드 검증 완료
+- [ ] swing-camera 실 디바이스 테스트 (카메라 권한, MediaPipe 포즈 추정) — 모바일 브라우저 필요
 
 ---
 
-## Sprint 4: 수익화 (v0.4 Beta)
+## Sprint 4: 수익화 (v0.4 Beta) — 코드 완성, API 키 필요
 
-- [ ] 토스페이먼츠 테스트 API 키 발급 + 연동
-- [ ] 결제 → 쿠폰 발행 → 쿠폰 사용 E2E
-- [ ] 웹훅 핸들링 테스트 (성공/실패/중복/만료)
+- [x] 결제 API (/api/payments) 코드 검증: rate limit, 중복 방지, 금액 검증
+- [x] 웹훅 핸들러 (/api/payments/webhook) 코드 검증: HMAC 서명, idempotency, DLQ
+- [x] coupon-activate Edge Function 코드 검증: 생성/활성화/만료
+- [x] toss.ts 클라이언트 라이브러리 코드 검증: timeout, retry, 에러 분류
+- [ ] 토스페이먼츠 테스트 API 키 발급 + .env.local 등록 — 주인님 필요
+- [ ] 결제 → 쿠폰 발행 → 쿠폰 사용 E2E smoke test
+- [ ] 웹훅 실 테스트 (Toss 테스트 환경)
 
 ---
 

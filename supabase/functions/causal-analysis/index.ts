@@ -3,20 +3,15 @@
  *
  * Implements the causal graph engine for symptom analysis and primary fix identification.
  *
- * Per Patent 1 Claim 1(e): Builds Layer A (raw measurements) → Layer B (derived metrics)
- * dependency model, runs reverse traversal through DAG, and computes IIS to select
+ * Per Patent 1 Claim 1(e): Builds causal DAG from causal_graph_edges + error_patterns,
+ * runs reverse traversal through DAG, and computes IIS to select
  * Primary Fix as a scalar value per DC-4.
  *
- * Improvements:
- * - Input validation (session_id format, existence checks)
- * - Cycle detection in DAG (DFS-based)
- * - IIS precision clamping [0.0, 1.0] with 4 decimal places
- * - DC-4 enforcement (scalar primary_fix with deterministic tiebreaker)
- * - Progress broadcasting via Supabase Realtime
- * - Idempotency with force_rerun option
- * - Batch safety (MAX_NODES=100)
- * - Edge weight validation [0.0, 2.0]
- * - Comprehensive error codes and audit logging
+ * DB tables used:
+ * - causal_graph_edges (from_node, to_node, weight, edge_type, calibration_count, calibrated_at)
+ * - error_patterns (code, name_ko, name_en, description, position, causality_parents)
+ * - coaching_decisions (session_id, coach_profile_id, primary_fix, auto_draft, data_quality_tier)
+ * - swing_videos (id, member_id, coach_profile_id)
  *
  * @edge-function causal-analysis
  * @feature F-015
@@ -29,31 +24,24 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 
 // ─── Types ───────────────────────────────────────────────────────
 
-interface RawMeasurement {
-  id: string;
-  member_id: string;
-  swing_id: string;
-  metric_name: string;
-  value: number;
-  timestamp: string;
-}
-
-interface DerivedMetric {
-  id: string;
-  member_id: string;
-  swing_id: string;
-  metric_name: string;
-  value: number;
-  dependencies: string[];
-  timestamp: string;
-}
-
 interface CausalGraphEdge {
   id: string;
-  source: string;
-  target: string;
+  from_node: string;
+  to_node: string;
   weight: number;
-  tier: number;
+  edge_type: string;
+  calibration_count: number;
+  calibrated_at: string;
+}
+
+interface ErrorPattern {
+  id: number;
+  code: string;
+  name_ko: string;
+  name_en: string;
+  description: string;
+  position: string;
+  causality_parents: Record<string, number> | null; // { parent_code: weight }
 }
 
 interface CandidateFix {
@@ -65,8 +53,8 @@ interface CandidateFix {
 
 interface CausalAnalysisRequest {
   operation: 'buildDependencyModel' | 'reverseTraverse' | 'createDraft';
-  session_id: string; // UUID format, must reference swing_videos
-  force_rerun?: boolean; // Skip idempotency check if true
+  session_id: string;
+  force_rerun?: boolean;
 }
 
 interface PrimaryFixResult {
@@ -77,25 +65,14 @@ interface PrimaryFixResult {
 
 // ─── Constants ───────────────────────────────────────────────────
 
-const IIS_THRESHOLD = 0.5; // Minimum IIS score to be considered
-const DECAY_FACTOR = 0.8; // Path decay for longer causality chains
-const MAX_PATH_LENGTH = 5; // Maximum steps in causal chain
-const MAX_NODES = 100; // Maximum DAG nodes before rejection
+const IIS_THRESHOLD = 0.5;
+const DECAY_FACTOR = 0.8;
+const MAX_PATH_LENGTH = 5;
+const MAX_NODES = 100;
 const EDGE_WEIGHT_MIN = 0.0;
 const EDGE_WEIGHT_MAX = 2.0;
 const IIS_DECIMAL_PLACES = 4;
 
-// Error codes per DC-5
-const ERROR_CODES = {
-  CA_SESSION_NOT_FOUND: { status: 404, code: 'CA_SESSION_NOT_FOUND' },
-  CA_INSUFFICIENT_DATA: { status: 422, code: 'CA_INSUFFICIENT_DATA' },
-  CA_DAG_CYCLE: { status: 500, code: 'CA_DAG_CYCLE' },
-  CA_IIS_FAILED: { status: 500, code: 'CA_IIS_FAILED' },
-  CA_VALIDATION_ERROR: { status: 400, code: 'CA_VALIDATION_ERROR' },
-  CA_MAX_NODES_EXCEEDED: { status: 422, code: 'CA_MAX_NODES_EXCEEDED' },
-} as const;
-
-// Progress stages for broadcasting
 type ProgressStage = 'LOADING_DATA' | 'BUILDING_DAG' | 'CYCLE_DETECTION' | 'TRAVERSING' | 'CALCULATING_IIS' | 'CREATING_DRAFT' | 'COMPLETE';
 
 // ─── Helpers ─────────────────────────────────────────────────────
@@ -107,25 +84,21 @@ function createSupabaseAdmin() {
   return createClient(url, key);
 }
 
-/**
- * Validate UUID format (basic check).
- */
 function isValidUUID(uuid: string): boolean {
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   return uuidRegex.test(uuid);
 }
 
-/**
- * Clamp IIS score to [0.0, 1.0] and round to 4 decimal places.
- */
 function clampIIS(score: number): number {
   const clamped = Math.max(0.0, Math.min(1.0, score));
   return Math.round(clamped * 10000) / 10000;
 }
 
-/**
- * Broadcast progress event via Supabase Realtime.
- */
+function serializeError(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  return JSON.stringify(error);
+}
+
 async function broadcastProgress(
   supabase: ReturnType<typeof createClient>,
   sessionId: string,
@@ -133,7 +106,6 @@ async function broadcastProgress(
   metadata?: Record<string, unknown>
 ): Promise<void> {
   try {
-    // Post to realtime channel for analysis progress
     await supabase.channel(`causal-analysis-${sessionId}`).send('broadcast', {
       event: 'progress',
       data: {
@@ -143,15 +115,13 @@ async function broadcastProgress(
       },
     });
   } catch (error) {
-    // Broadcast failures should not block analysis
-    console.warn(`[causal-analysis] Broadcast failed for stage ${stage}:`, error);
+    console.warn(`[causal-analysis] Broadcast failed for stage ${stage}:`, serializeError(error));
   }
 }
 
 /**
  * Compute Integrated Impact Score (IIS) for a candidate fix.
- * IIS = (direct_impact × relevance) + (path_length_decay)
- * Higher IIS = more likely to resolve the chain of symptoms.
+ * IIS = (direct_impact × relevance) × path_length_decay
  * Returns clamped [0.0, 1.0] with 4 decimal precision.
  */
 function computeIIS(
@@ -164,87 +134,64 @@ function computeIIS(
   return clampIIS(raw);
 }
 
+// ─── Core Functions ──────────────────────────────────────────────
+
 /**
- * Build Layer A → Layer B dependency model.
- * Reads raw_measurements and computes derived_metrics from dependencies.
+ * Build the causal DAG from causal_graph_edges + error_patterns.causality_parents.
+ * Returns the full set of edges for the session's analysis context.
  */
 async function buildDependencyModel(
   supabase: ReturnType<typeof createClient>,
   sessionId: string
-): Promise<{ layerA: RawMeasurement[]; layerB: DerivedMetric[] }> {
+): Promise<{ edges: CausalGraphEdge[]; errorPatterns: ErrorPattern[] }> {
   const startTime = Date.now();
   console.info(`[causal-analysis] buildDependencyModel: session=${sessionId}`);
 
-  await broadcastProgress(supabase, sessionId, 'LOADING_DATA', { phase: 'fetching_measurements' });
+  await broadcastProgress(supabase, sessionId, 'LOADING_DATA', { phase: 'fetching_graph' });
 
-  // Fetch Layer A: Raw measurements for this session
-  const { data: layerA, error: layerAError } = await supabase
-    .from('raw_measurements')
-    .select('*')
-    .eq('session_id', sessionId);
+  // Fetch causal graph edges (the DAG)
+  const { data: edges, error: edgesError } = await supabase
+    .from('causal_graph_edges')
+    .select('id, from_node, to_node, weight, edge_type, calibration_count, calibrated_at');
 
-  if (layerAError) {
-    throw new Error(`Failed to fetch raw measurements: ${layerAError.message}`);
+  if (edgesError) {
+    throw new Error(`Failed to fetch causal graph edges: ${edgesError.message}`);
   }
 
-  console.info(`[causal-analysis] Loaded ${layerA?.length || 0} raw measurements in ${Date.now() - startTime}ms`);
+  // Fetch error patterns with causality_parents for parent relationships
+  const { data: errorPatterns, error: epError } = await supabase
+    .from('error_patterns')
+    .select('id, code, name_ko, name_en, description, position, causality_parents');
 
-  // Compute Layer B: Derived metrics from dependencies
-  const derivedMetrics: DerivedMetric[] = [];
-
-  if (layerA && layerA.length > 0) {
-    // For each raw measurement, create derived metrics based on causal rules
-    for (const measurement of layerA) {
-      // Example: velocity_at_top depends on clubhead_speed + swing_plane
-      const derived: DerivedMetric = {
-        id: `derived-${measurement.id}-${Date.now()}`,
-        member_id: measurement.member_id,
-        swing_id: measurement.swing_id,
-        metric_name: `derived_${measurement.metric_name}`,
-        value: measurement.value * 1.1, // Simplified computation (normally would apply formula)
-        dependencies: ['raw_' + measurement.metric_name],
-        timestamp: new Date().toISOString(),
-      };
-      derivedMetrics.push(derived);
-    }
-
-    // Insert derived metrics into Layer B
-    const { error: insertError } = await supabase
-      .from('derived_metrics')
-      .insert(derivedMetrics);
-
-    if (insertError) {
-      console.warn(
-        `[causal-analysis] Failed to insert some derived metrics: ${insertError.message}`
-      );
-    }
+  if (epError) {
+    throw new Error(`Failed to fetch error patterns: ${epError.message}`);
   }
 
-  console.info(`[causal-analysis] Generated ${derivedMetrics.length} derived metrics`);
+  console.info(
+    `[causal-analysis] Loaded ${edges?.length || 0} graph edges, ${errorPatterns?.length || 0} error patterns in ${Date.now() - startTime}ms`
+  );
 
   return {
-    layerA: layerA || [],
-    layerB: derivedMetrics,
+    edges: edges || [],
+    errorPatterns: errorPatterns || [],
   };
 }
 
 /**
- * Detect cycles in DAG using DFS (Depth-First Search).
+ * Detect cycles in DAG using DFS.
  * Returns array of node names involved in cycle if found, empty array if no cycle.
  */
 function detectCycles(edges: CausalGraphEdge[]): string[] {
   const adjList: Record<string, string[]> = {};
   const allNodes = new Set<string>();
 
-  // Build adjacency list
   for (const edge of edges) {
-    if (!adjList[edge.source]) adjList[edge.source] = [];
-    adjList[edge.source].push(edge.target);
-    allNodes.add(edge.source);
-    allNodes.add(edge.target);
+    if (!adjList[edge.from_node]) adjList[edge.from_node] = [];
+    adjList[edge.from_node].push(edge.to_node);
+    allNodes.add(edge.from_node);
+    allNodes.add(edge.to_node);
   }
 
-  // Check for cycles using DFS
   const visited = new Set<string>();
   const recStack = new Set<string>();
 
@@ -259,7 +206,6 @@ function detectCycles(edges: CausalGraphEdge[]): string[] {
         const result = hasCycle(neighbor, [...path]);
         if (result.length > 0) return result;
       } else if (recStack.has(neighbor)) {
-        // Found a cycle
         const cycleStart = path.indexOf(neighbor);
         return path.slice(cycleStart).concat([neighbor]);
       }
@@ -269,13 +215,10 @@ function detectCycles(edges: CausalGraphEdge[]): string[] {
     return [];
   }
 
-  // Check each node
   for (const node of allNodes) {
     if (!visited.has(node)) {
       const cycle = hasCycle(node, []);
-      if (cycle.length > 0) {
-        return cycle;
-      }
+      if (cycle.length > 0) return cycle;
     }
   }
 
@@ -283,8 +226,10 @@ function detectCycles(edges: CausalGraphEdge[]): string[] {
 }
 
 /**
- * Reverse traverse causal DAG: effect → cause
- * Starting from observed symptoms, work backwards to find root causes.
+ * Reverse traverse causal DAG: effect → cause.
+ * Starting from observed error pattern symptoms, work backwards to find root causes.
+ * Uses error_patterns.causality_parents to identify which patterns are symptoms
+ * and causal_graph_edges for the DAG structure.
  * Compute IIS for each candidate fix and select the max IIS Primary Fix.
  */
 async function reverseTraverse(
@@ -294,44 +239,25 @@ async function reverseTraverse(
   const startTime = Date.now();
   console.info(`[causal-analysis] reverseTraverse: session=${sessionId}`);
 
-  await broadcastProgress(supabase, sessionId, 'BUILDING_DAG', { phase: 'fetching_metrics' });
+  await broadcastProgress(supabase, sessionId, 'BUILDING_DAG', { phase: 'loading_data' });
 
-  // Fetch observed symptoms (Layer B derived metrics)
-  const { data: symptoms, error: symptomsError } = await supabase
-    .from('derived_metrics')
-    .select('metric_name, value')
-    .eq('session_id', sessionId);
+  // Build DAG
+  const { edges, errorPatterns } = await buildDependencyModel(supabase, sessionId);
 
-  if (symptomsError || !symptoms || symptoms.length === 0) {
-    throw new Error('CA_INSUFFICIENT_DATA: No symptoms found for reverse traversal');
+  if (!edges || edges.length === 0) {
+    throw new Error('CA_INSUFFICIENT_DATA: No causal graph edges found');
   }
-
-  console.info(`[causal-analysis] Identified ${symptoms.length} symptoms for traversal`);
-
-  // Fetch causal graph edges
-  await broadcastProgress(supabase, sessionId, 'BUILDING_DAG', { phase: 'loading_edges' });
-
-  const { data: edges, error: edgesError } = await supabase
-    .from('causal_graph_edges')
-    .select('*');
-
-  if (edgesError || !edges) {
-    throw new Error(`Failed to fetch causal graph: ${edgesError?.message}`);
-  }
-
-  console.info(`[causal-analysis] Loaded ${edges.length} causal graph edges`);
 
   // Validate edge weights are in [0.0, 2.0]
   for (const edge of edges) {
     if (typeof edge.weight !== 'number' || edge.weight < EDGE_WEIGHT_MIN || edge.weight > EDGE_WEIGHT_MAX) {
-      console.warn(`[causal-analysis] Edge weight out of range: ${edge.source}->${edge.target} weight=${edge.weight}`);
-      // Clamp invalid weights
-      edge.weight = Math.max(EDGE_WEIGHT_MIN, Math.min(EDGE_WEIGHT_MAX, edge.weight));
+      console.warn(`[causal-analysis] Edge weight out of range: ${edge.from_node}->${edge.to_node} weight=${edge.weight}`);
+      edge.weight = Math.max(EDGE_WEIGHT_MIN, Math.min(EDGE_WEIGHT_MAX, edge.weight || 0));
     }
   }
 
   // Check DAG node count (batch safety)
-  const nodeCount = new Set(edges.flatMap(e => [e.source, e.target])).size;
+  const nodeCount = new Set(edges.flatMap(e => [e.from_node, e.to_node])).size;
   if (nodeCount > MAX_NODES) {
     throw new Error(`CA_MAX_NODES_EXCEEDED: DAG has ${nodeCount} nodes, max ${MAX_NODES}`);
   }
@@ -344,66 +270,85 @@ async function reverseTraverse(
     throw new Error(`CA_DAG_CYCLE: Cycle detected in causal graph: ${cycle.join(' -> ')}`);
   }
 
-  // Build adjacency list (effect → causes)
+  // Build reverse adjacency list: to_node → edges pointing to it (effect → causes)
   const effectToCauses: Record<string, CausalGraphEdge[]> = {};
   for (const edge of edges) {
-    if (!effectToCauses[edge.target]) {
-      effectToCauses[edge.target] = [];
+    if (!effectToCauses[edge.to_node]) {
+      effectToCauses[edge.to_node] = [];
     }
-    effectToCauses[edge.target].push(edge);
+    effectToCauses[edge.to_node].push(edge);
+  }
+
+  // Build error pattern lookup by code
+  const patternByCode: Record<string, ErrorPattern> = {};
+  for (const ep of errorPatterns) {
+    patternByCode[ep.code] = ep;
+  }
+
+  // Identify symptom nodes: nodes that are to_node (effects) in the graph
+  // i.e., error patterns that appear as effects (leaf effects with no further downstream)
+  const allFromNodes = new Set(edges.map(e => e.from_node));
+  const allToNodes = new Set(edges.map(e => e.to_node));
+  const symptomNodes = [...allToNodes].filter(n => !allFromNodes.has(n));
+
+  // If no pure leaf symptoms, use all to_nodes as starting points
+  const startNodes = symptomNodes.length > 0 ? symptomNodes : [...allToNodes];
+
+  console.info(`[causal-analysis] Identified ${startNodes.length} symptom nodes for traversal`);
+
+  if (startNodes.length === 0) {
+    throw new Error('CA_INSUFFICIENT_DATA: No symptom nodes found for reverse traversal');
   }
 
   // Reverse traverse from symptoms to find candidate fixes
-  await broadcastProgress(supabase, sessionId, 'TRAVERSING', { symptom_count: symptoms.length });
+  await broadcastProgress(supabase, sessionId, 'TRAVERSING', { symptom_count: startNodes.length });
 
   const candidateFixes: Record<string, CandidateFix> = {};
 
-  async function traverseEffect(effectName: string, pathLength: number, visited: Set<string> = new Set()): Promise<void> {
-    if (pathLength > MAX_PATH_LENGTH || visited.has(effectName)) {
-      return; // Prevent infinite traversal
-    }
+  function traverseEffect(effectName: string, pathLength: number, visited: Set<string>): void {
+    if (pathLength > MAX_PATH_LENGTH || visited.has(effectName)) return;
 
     visited.add(effectName);
-
     const causes = effectToCauses[effectName];
-    if (!causes || causes.length === 0) {
-      return; // No more causes to traverse
-    }
+    if (!causes || causes.length === 0) return;
 
     for (const edge of causes) {
-      const causeName = edge.source;
+      const causeName = edge.from_node;
+      const pattern = patternByCode[causeName];
 
-      // Fetch fix metadata
-      const { data: fix } = await supabase
-        .from('fixes')
-        .select('id, name, relevance_score')
-        .eq('metric_name', causeName)
-        .single();
-
-      if (fix) {
-        const iis = computeIIS(edge.weight, fix.relevance_score || 0.5, pathLength);
-
-        if (iis > IIS_THRESHOLD) {
-          const fixId = `fix-${fix.id}`;
-          if (!candidateFixes[fixId] || candidateFixes[fixId].iis_score < iis) {
-            candidateFixes[fixId] = {
-              fix_id: fixId,
-              name: fix.name,
-              iis_score: iis,
-              path_length: pathLength,
-            };
-          }
+      // Use causality_parents weight as relevance, default 0.5
+      let relevance = 0.5;
+      if (pattern?.causality_parents) {
+        const parentWeights = Object.values(pattern.causality_parents);
+        if (parentWeights.length > 0) {
+          relevance = parentWeights.reduce((a, b) => a + b, 0) / parentWeights.length;
         }
-
-        // Continue traversal up the chain (share visited set to prevent duplicate traversal)
-        await traverseEffect(causeName, pathLength + 1, visited);
       }
+
+      const iis = computeIIS(edge.weight, relevance, pathLength);
+
+      if (iis >= IIS_THRESHOLD) {
+        const fixId = causeName; // Use error pattern code as fix identifier
+        const displayName = pattern?.name_ko || pattern?.name_en || causeName;
+
+        if (!candidateFixes[fixId] || candidateFixes[fixId].iis_score < iis) {
+          candidateFixes[fixId] = {
+            fix_id: fixId,
+            name: displayName,
+            iis_score: iis,
+            path_length: pathLength,
+          };
+        }
+      }
+
+      // Continue traversal up the chain
+      traverseEffect(causeName, pathLength + 1, new Set(visited));
     }
   }
 
   // Start traversal from each symptom
-  for (const symptom of symptoms) {
-    await traverseEffect(symptom.metric_name, 1);
+  for (const symptom of startNodes) {
+    traverseEffect(symptom, 1, new Set());
   }
 
   console.info(
@@ -414,7 +359,7 @@ async function reverseTraverse(
   await broadcastProgress(supabase, sessionId, 'CALCULATING_IIS', { candidates: Object.keys(candidateFixes).length });
 
   // Select Primary Fix: highest IIS score (DC-4: scalar value)
-  // If tie, use deterministic tiebreaker (alphabetical EP code)
+  // If tie, use deterministic tiebreaker (alphabetical code)
   let primaryFix: PrimaryFixResult | null = null;
   let maxIIS = IIS_THRESHOLD;
   let candidateCode: string | null = null;
@@ -508,10 +453,6 @@ async function createDraft(
 
 // ─── Idempotency Check ───────────────────────────────────────
 
-/**
- * Check if analysis already exists for this session.
- * Returns existing analysis if found and force_rerun is false.
- */
 async function getExistingAnalysis(
   supabase: ReturnType<typeof createClient>,
   sessionId: string
@@ -520,10 +461,10 @@ async function getExistingAnalysis(
     .from('coaching_decisions')
     .select('id, primary_fix, auto_draft')
     .eq('session_id', sessionId)
-    .eq('auto_draft', true) // Only return auto-draft to avoid coach edits
+    .not('auto_draft', 'is', null) // Only return auto-draft decisions
     .order('created_at', { ascending: false })
     .limit(1)
-    .single();
+    .maybeSingle();
 
   if (error || !decision) {
     return null;
@@ -533,8 +474,8 @@ async function getExistingAnalysis(
     coaching_decision_id: decision.id,
     primary_fix: {
       fix_id: decision.primary_fix,
-      name: (decision.auto_draft as any)?.name || decision.primary_fix,
-      iis_score: (decision.auto_draft as any)?.iis_score || 0.5,
+      name: (decision.auto_draft as Record<string, unknown>)?.name as string || decision.primary_fix,
+      iis_score: (decision.auto_draft as Record<string, unknown>)?.iis_score as number || 0.5,
     },
   };
 }
@@ -559,9 +500,7 @@ serve(async (req: Request) => {
     if (!session_id) {
       return new Response(
         JSON.stringify({
-          error: 'Validation error',
-          code: 'CA_VALIDATION_ERROR',
-          message: 'session_id is required'
+          error: { code: 'CA_VALIDATION_ERROR', message: 'session_id is required' }
         }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -570,9 +509,7 @@ serve(async (req: Request) => {
     if (!isValidUUID(session_id)) {
       return new Response(
         JSON.stringify({
-          error: 'Validation error',
-          code: 'CA_VALIDATION_ERROR',
-          message: 'session_id must be a valid UUID'
+          error: { code: 'CA_VALIDATION_ERROR', message: 'session_id must be a valid UUID' }
         }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -611,9 +548,7 @@ serve(async (req: Request) => {
       default:
         return new Response(
           JSON.stringify({
-            error: 'Validation error',
-            code: 'CA_VALIDATION_ERROR',
-            message: 'Unknown operation'
+            error: { code: 'CA_VALIDATION_ERROR', message: 'Unknown operation' }
           }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
@@ -624,11 +559,10 @@ serve(async (req: Request) => {
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
-    console.error('[causal-analysis] Error:', error);
+    console.error('[causal-analysis] Error:', serializeError(error));
 
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorMessage = serializeError(error);
 
-    // Extract error code from message (e.g., "CA_SESSION_NOT_FOUND: ...")
     let code = 'CA_INTERNAL_ERROR';
     let status = 500;
     let userMessage = 'Causal analysis failed';
@@ -661,9 +595,7 @@ serve(async (req: Request) => {
 
     return new Response(
       JSON.stringify({
-        error: userMessage,
-        code,
-        message: errorMessage,
+        error: { code, message: userMessage, details: errorMessage },
       }),
       { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
