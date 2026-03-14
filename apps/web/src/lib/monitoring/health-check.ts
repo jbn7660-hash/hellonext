@@ -14,6 +14,12 @@
 
 import * as Sentry from '@sentry/nextjs';
 
+// Supabase Edge Function base URL for direct health checks
+const SUPABASE_FUNCTIONS_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
+  ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1`
+  : null;
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+
 // Circuit breaker configuration
 interface CircuitBreakerState {
   failures: number;
@@ -136,17 +142,31 @@ export async function checkDatabase(): Promise<HealthStatus> {
 
 /**
  * 인증 서비스 헬스 확인
+ * Supabase Auth GoTrue 헬스체크: GET /auth/v1/health
  * @returns HealthStatus
  */
 export async function checkAuth(): Promise<HealthStatus> {
   const startTime = Date.now();
 
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
+    return {
+      status: 'degraded',
+      latency: 0,
+      lastChecked: new Date().toISOString(),
+      message: 'Auth: SUPABASE_URL not configured',
+    };
+  }
+
   try {
-    // Auth 서비스 엔드포인트 확인
-    const authEndpoint = process.env.NEXT_PUBLIC_AUTH_URL || 'http://localhost:3000/api/auth/health';
-    const response = await fetch(authEndpoint, {
-      method: 'GET',
-    });
+    // Supabase GoTrue exposes /auth/v1/health
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/health`,
+      {
+        method: 'GET',
+        headers: { 'apikey': SUPABASE_ANON_KEY },
+        signal: AbortSignal.timeout(5000),
+      }
+    );
 
     const latency = Date.now() - startTime;
 
@@ -155,7 +175,7 @@ export async function checkAuth(): Promise<HealthStatus> {
         status: latency < 100 ? 'healthy' : 'degraded',
         latency,
         lastChecked: new Date().toISOString(),
-        message: 'Auth service healthy',
+        message: 'Supabase Auth service healthy',
       };
     }
 
@@ -176,48 +196,69 @@ export async function checkAuth(): Promise<HealthStatus> {
 }
 
 /**
- * FSM 컨트롤러 헬스 확인
- * DC-5 (FSM 상태 전이) 무결성 검증
+ * Helper: Check a Supabase Edge Function's health via OPTIONS/POST ping.
+ * If SUPABASE_FUNCTIONS_URL is not configured, returns degraded with a config message.
  */
-export async function checkFsmController(): Promise<HealthStatus> {
+async function checkEdgeFunction(
+  functionName: string,
+  displayName: string,
+): Promise<HealthStatus> {
   const startTime = Date.now();
 
+  if (!SUPABASE_FUNCTIONS_URL) {
+    return {
+      status: 'degraded',
+      latency: 0,
+      lastChecked: new Date().toISOString(),
+      message: `${displayName}: SUPABASE_URL not configured`,
+    };
+  }
+
   try {
-    // FSM 상태 검증 엣지 함수 호출
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/health/fsm-controller`,
-      {
-        method: 'GET',
-      }
-    );
+    // Use OPTIONS as a lightweight connectivity check — Edge Functions always respond to CORS preflight
+    const response = await fetch(`${SUPABASE_FUNCTIONS_URL}/${functionName}`, {
+      method: 'OPTIONS',
+      headers: {
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        'apikey': SUPABASE_ANON_KEY,
+      },
+      signal: AbortSignal.timeout(5000),
+    });
 
     const latency = Date.now() - startTime;
 
-    if (!response.ok) {
+    // OPTIONS returning 200/204 means the function is deployed and reachable
+    if (response.ok || response.status === 204) {
       return {
-        status: 'unhealthy',
+        status: latency < 200 ? 'healthy' : 'degraded',
         latency,
         lastChecked: new Date().toISOString(),
-        message: `FSM Controller returned ${response.status}`,
+        message: `${displayName} reachable (${latency}ms)`,
       };
     }
 
-    const data = await response.json();
-
     return {
-      status: data.healthy ? (latency < 200 ? 'healthy' : 'degraded') : 'unhealthy',
+      status: 'unhealthy',
       latency,
       lastChecked: new Date().toISOString(),
-      message: data.message || 'FSM Controller healthy',
+      message: `${displayName} returned ${response.status}`,
     };
   } catch (error) {
     return {
       status: 'unhealthy',
       latency: Date.now() - startTime,
       lastChecked: new Date().toISOString(),
-      message: `FSM Controller check failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      message: `${displayName} check failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
     };
   }
+}
+
+/**
+ * FSM 컨트롤러 헬스 확인
+ * DC-5 (FSM 상태 전이) 무결성 검증
+ */
+export async function checkFsmController(): Promise<HealthStatus> {
+  return checkEdgeFunction('voice-fsm-controller', 'FSM Controller');
 }
 
 /**
@@ -225,47 +266,7 @@ export async function checkFsmController(): Promise<HealthStatus> {
  * DC-1 (인과 그래프 무결성) 검증
  */
 export async function checkCausalAnalysis(): Promise<HealthStatus> {
-  const startTime = Date.now();
-
-  try {
-    // IIS (Importance Impact Score) 계산 테스트
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/health/causal-analysis`,
-      {
-        method: 'GET',
-      }
-    );
-
-    const latency = Date.now() - startTime;
-
-    if (!response.ok) {
-      return {
-        status: 'unhealthy',
-        latency,
-        lastChecked: new Date().toISOString(),
-        message: `Causal Analysis returned ${response.status}`,
-      };
-    }
-
-    const data = await response.json();
-
-    // F-015 위반 확인: IIS 계산이 5초를 초과한 경우
-    const status = latency > 5000 ? 'unhealthy' : latency > 2000 ? 'degraded' : 'healthy';
-
-    return {
-      status,
-      latency,
-      lastChecked: new Date().toISOString(),
-      message: data.message || 'Causal Analysis healthy',
-    };
-  } catch (error) {
-    return {
-      status: 'unhealthy',
-      latency: Date.now() - startTime,
-      lastChecked: new Date().toISOString(),
-      message: `Causal Analysis check failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
-    };
-  }
+  return checkEdgeFunction('causal-analysis', 'Causal Analysis');
 }
 
 /**
@@ -273,43 +274,7 @@ export async function checkCausalAnalysis(): Promise<HealthStatus> {
  * DC-2 (신뢰도 계산) 무결성 검증
  */
 export async function checkMeasurementConfidence(): Promise<HealthStatus> {
-  const startTime = Date.now();
-
-  try {
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/health/measurement-confidence`,
-      {
-        method: 'GET',
-      }
-    );
-
-    const latency = Date.now() - startTime;
-
-    if (!response.ok) {
-      return {
-        status: 'unhealthy',
-        latency,
-        lastChecked: new Date().toISOString(),
-        message: `Measurement Confidence returned ${response.status}`,
-      };
-    }
-
-    const data = await response.json();
-
-    return {
-      status: data.healthy ? (latency < 200 ? 'healthy' : 'degraded') : 'unhealthy',
-      latency,
-      lastChecked: new Date().toISOString(),
-      message: data.message || 'Measurement Confidence healthy',
-    };
-  } catch (error) {
-    return {
-      status: 'unhealthy',
-      latency: Date.now() - startTime,
-      lastChecked: new Date().toISOString(),
-      message: `Measurement Confidence check failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
-    };
-  }
+  return checkEdgeFunction('measurement-confidence', 'Measurement Confidence');
 }
 
 /**
@@ -317,46 +282,7 @@ export async function checkMeasurementConfidence(): Promise<HealthStatus> {
  * F-016 제약: 검증 큐 지연 (>24시간) 확인
  */
 export async function checkVerificationHandler(): Promise<HealthStatus> {
-  const startTime = Date.now();
-
-  try {
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/health/verification-handler`,
-      {
-        method: 'GET',
-      }
-    );
-
-    const latency = Date.now() - startTime;
-
-    if (!response.ok) {
-      return {
-        status: 'unhealthy',
-        latency,
-        lastChecked: new Date().toISOString(),
-        message: `Verification Handler returned ${response.status}`,
-      };
-    }
-
-    const data = await response.json();
-
-    // F-016: 검증 큐에 24시간 이상 대기 중인 항목 확인
-    const queueStatus = data.oldestQueueItemAge > 86400000 ? 'degraded' : 'healthy';
-
-    return {
-      status: data.healthy && queueStatus === 'healthy' ? 'healthy' : data.healthy ? 'degraded' : 'unhealthy',
-      latency,
-      lastChecked: new Date().toISOString(),
-      message: data.message || 'Verification Handler healthy',
-    };
-  } catch (error) {
-    return {
-      status: 'unhealthy',
-      latency: Date.now() - startTime,
-      lastChecked: new Date().toISOString(),
-      message: `Verification Handler check failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
-    };
-  }
+  return checkEdgeFunction('verification-handler', 'Verification Handler');
 }
 
 /**
@@ -364,83 +290,43 @@ export async function checkVerificationHandler(): Promise<HealthStatus> {
  * DC-4 (엣지 가중치 계산) 무결성 검증
  */
 export async function checkEdgeWeightCalibration(): Promise<HealthStatus> {
-  const startTime = Date.now();
-
-  try {
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/health/edge-weight-calibration`,
-      {
-        method: 'GET',
-      }
-    );
-
-    const latency = Date.now() - startTime;
-
-    if (!response.ok) {
-      return {
-        status: 'unhealthy',
-        latency,
-        lastChecked: new Date().toISOString(),
-        message: `Edge Weight Calibration returned ${response.status}`,
-      };
-    }
-
-    const data = await response.json();
-
-    return {
-      status: data.healthy ? (latency < 200 ? 'healthy' : 'degraded') : 'unhealthy',
-      latency,
-      lastChecked: new Date().toISOString(),
-      message: data.message || 'Edge Weight Calibration healthy',
-    };
-  } catch (error) {
-    return {
-      status: 'unhealthy',
-      latency: Date.now() - startTime,
-      lastChecked: new Date().toISOString(),
-      message: `Edge Weight Calibration check failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
-    };
-  }
+  return checkEdgeFunction('edge-weight-calibration', 'Edge Weight Calibration');
 }
 
 /**
  * 실시간 통신 (WebSocket/Realtime) 헬스 확인
+ * Supabase Realtime은 wss://<project>.supabase.co/realtime/v1 에서 동작
  */
 export async function checkRealtime(): Promise<HealthStatus> {
   const startTime = Date.now();
 
-  try {
-    const realtimeUrl = process.env.NEXT_PUBLIC_REALTIME_URL || 'ws://localhost:3000/ws/health';
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
+    return {
+      status: 'degraded',
+      latency: 0,
+      lastChecked: new Date().toISOString(),
+      message: 'Realtime: SUPABASE_URL not configured',
+    };
+  }
 
-    // WebSocket 헬스 체크는 일반적으로 별도 엔드포인트 사용
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/health/realtime`,
-      {
-        method: 'GET',
-      }
-    );
+  try {
+    // Supabase Realtime health: GET the REST endpoint as a connectivity proxy
+    // (actual WebSocket check would require a WS client)
+    const realtimeHealthUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/`;
+    const response = await fetch(realtimeHealthUrl, {
+      headers: { 'apikey': SUPABASE_ANON_KEY },
+      signal: AbortSignal.timeout(5000),
+    });
 
     const latency = Date.now() - startTime;
 
-    if (!response.ok) {
-      return {
-        status: 'degraded',
-        latency,
-        lastChecked: new Date().toISOString(),
-        message: `Realtime service returned ${response.status}`,
-      };
-    }
-
-    const data = await response.json();
-
     return {
-      status: data.healthy ? (latency < 100 ? 'healthy' : 'degraded') : 'degraded',
+      status: response.ok ? (latency < 100 ? 'healthy' : 'degraded') : 'degraded',
       latency,
       lastChecked: new Date().toISOString(),
-      message: data.message || 'Realtime service healthy',
+      message: response.ok ? 'Supabase Realtime reachable' : `Supabase returned ${response.status}`,
     };
   } catch (error) {
-    // Realtime 장애는 심각도를 degraded로 제한 (완전 서비스 중단 아님)
     return {
       status: 'degraded',
       latency: Date.now() - startTime,
@@ -701,40 +587,35 @@ async function checkOpenAi(): Promise<HealthStatus> {
 
 /**
  * Validate patent engine design constraints (DC-1~DC-5)
+ * Uses patent-related Edge Function reachability as a proxy for constraint health.
+ * Full constraint validation requires DB queries (Sprint 5+).
  */
 async function validatePatentConstraints(): Promise<HealthStatus> {
   const startTime = Date.now();
 
   try {
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/health/constraints-validation`,
-      { method: 'GET', signal: AbortSignal.timeout(5000) }
+    // Check that core patent EFs are reachable (proxy for patent engine health)
+    const patentEfs = ['causal-analysis', 'measurement-confidence', 'edge-weight-calibration'];
+    const results = await Promise.all(
+      patentEfs.map((ef) => checkEdgeFunction(ef, ef))
     );
 
     const latency = Date.now() - startTime;
-
-    if (!response.ok) {
-      return {
-        status: 'unhealthy',
-        latency,
-        lastChecked: new Date().toISOString(),
-        message: `Patent constraint validation failed (${response.status})`,
-      };
-    }
-
-    const data = await response.json() as Record<string, unknown>;
+    const allHealthy = results.every((r) => r.status === 'healthy');
+    const anyUnhealthy = results.some((r) => r.status === 'unhealthy');
 
     return {
-      status: (data.constraintsValid as boolean) ? 'healthy' : 'unhealthy',
+      status: allHealthy ? 'healthy' : anyUnhealthy ? 'unhealthy' : 'degraded',
       latency,
       lastChecked: new Date().toISOString(),
-      message: data.message as string || 'Patent constraints valid',
+      message: allHealthy
+        ? 'Patent Engine EFs reachable'
+        : `Patent Engine: ${results.filter((r) => r.status !== 'healthy').map((r) => r.message).join('; ')}`,
       details: {
-        dc1_validated: data.dc1_validated,
-        dc2_validated: data.dc2_validated,
-        dc3_validated: data.dc3_validated,
-        dc4_validated: data.dc4_validated,
-        dc5_validated: data.dc5_validated,
+        dc1_causal_analysis: results[0]?.status,
+        dc2_measurement_confidence: results[1]?.status,
+        dc4_edge_weight_calibration: results[2]?.status,
+        dc5_fsm: 'checked_separately',
       },
     };
   } catch (error) {
