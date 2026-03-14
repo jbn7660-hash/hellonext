@@ -4,7 +4,20 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": [".next/**", "!.next/cache/**", "dist/**"]
+      "outputs": [".next/**", "!.next/cache/**", "dist/**"],
+      "env": [
+        "NEXT_PUBLIC_SUPABASE_URL",
+        "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+        "SUPABASE_SERVICE_ROLE_KEY",
+        "NODE_ENV",
+        "CONFIDENCE_T1",
+        "CONFIDENCE_T2",
+        "CONFIDENCE_K",
+        "CAUSAL_GRAPH_VERSION",
+        "FSM_RECOVERY_TIMEOUT_SEC",
+        "STT_MAX_RETRY",
+        "VERIFICATION_DAILY_LIMIT_PER_PRO"
+      ]
     },
     "dev": {
       "cache": false,
