@@ -74,7 +74,7 @@ FROM node:${NODE_VERSION}-alpine AS runner
 RUN apk add --no-cache dumb-init && \
     addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs && \
-    chmod 755 /usr/sbin/dumb-init
+    chmod 755 /usr/bin/dumb-init
 
 WORKDIR /app
 
@@ -116,7 +116,7 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
   "
 
 # Use dumb-init to properly handle signals and prevent zombie processes
-ENTRYPOINT ["/usr/sbin/dumb-init", "--"]
+ENTRYPOINT ["/usr/bin/dumb-init", "--"]
 
 # Start the application
 CMD ["node", "server.js"]

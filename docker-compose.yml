@@ -7,10 +7,6 @@
 
 version: '3.9'
 
-# Load environment variables from .env file
-env_file:
-  - .env
-
 services:
   # ============================
   # Next.js Web Application
@@ -19,8 +15,7 @@ services:
   web:
     build:
       context: .
-      dockerfile: Dockerfile
-      target: builder
+      dockerfile: Dockerfile.dev
     container_name: arcup-web-dev
     ports:
       - "3000:3000"
@@ -64,7 +59,10 @@ services:
     volumes:
       # Hot reload support
       - .:/app
+      # Keep container-installed deps; don't shadow them with host volumes
       - /app/node_modules
+      - /app/apps/web/node_modules
+      - /app/apps/mobile/node_modules
       - /app/.next
 
     depends_on:
@@ -211,7 +209,8 @@ services:
 
     # Improved healthcheck with no-cache flag to avoid curl issues
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8001/status"]
+      # Kong admin is on 127.0.0.1:8001 inside container; proxy is 0.0.0.0:8000.
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:8001/status"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -252,14 +251,10 @@ networks:
   # Frontend network (web app)
   arcup-frontend:
     driver: bridge
-    driver_opts:
-      com.docker.network.bridge.name: br-arcup-frontend
 
   # Backend network (database, services)
   arcup-backend:
     driver: bridge
-    driver_opts:
-      com.docker.network.bridge.name: br-arcup-backend
     internal: false
 
 # ============================

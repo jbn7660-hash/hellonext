@@ -1,0 +1,38 @@
+_format_version: "2.1"
+_transform: true
+
+services:
+  - name: supabase-rest
+    url: http://supabase-rest:3000
+    routes:
+      - name: rest
+        paths:
+          - /rest/v1
+
+plugins:
+  - name: cors
+    config:
+      origins:
+        - "*"
+      methods:
+        - GET
+        - POST
+        - PUT
+        - PATCH
+        - DELETE
+        - OPTIONS
+      headers:
+        - Accept
+        - Accept-Version
+        - Content-Length
+        - Content-MD5
+        - Content-Type
+        - Date
+        - Authorization
+        - X-Client-Info
+        - apikey
+        - X-Requested-With
+      exposed_headers:
+        - Content-Range
+      credentials: true
+      max_age: 3600

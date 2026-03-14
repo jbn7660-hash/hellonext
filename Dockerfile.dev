@@ -1,0 +1,24 @@
+# Dev-only Dockerfile to run Next.js via pnpm dev without production build
+ARG NODE_VERSION=20
+FROM node:${NODE_VERSION}-alpine
+
+RUN npm install -g pnpm@9 && apk add --no-cache dumb-init
+WORKDIR /app
+
+# Copy only manifests first for better caching
+COPY pnpm-lock.yaml ./
+COPY package.json ./
+COPY pnpm-workspace.yaml ./
+COPY turbo.json ./
+COPY tsconfig.json ./
+COPY packages/ ./packages/
+COPY apps/ ./apps/
+
+# Some repos include placeholder files named "node_modules" (as a file) which breaks pnpm linking.
+# Remove them so pnpm can create directories.
+RUN rm -f apps/web/node_modules apps/mobile/node_modules || true
+
+RUN pnpm install --frozen-lockfile
+
+EXPOSE 3000
+CMD ["pnpm", "dev"]
