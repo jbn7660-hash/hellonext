@@ -191,8 +191,10 @@
 - [x] 웹훅 핸들러 (/api/payments/webhook) 코드 검증: HMAC 서명, idempotency, DLQ
 - [x] coupon-activate Edge Function 코드 검증: 생성/활성화/만료
 - [x] toss.ts 클라이언트 라이브러리 코드 검증: timeout, retry, 에러 분류
-- [ ] 토스페이먼츠 테스트 API 키 발급 + .env.local 등록 — 주인님 필요
-- [ ] 결제 → 쿠폰 발행 → 쿠폰 사용 E2E smoke test
+- [x] 토스페이먼츠 테스트 API 키 발급 + .env.local 등록 — 완료 (2026-03-15)
+- [x] Toss API 연결 확인 (인증 헤더 + confirmPayment 에러 코드 정상)
+- [ ] Vercel 환경변수에 TOSS 키 3개 등록 — 주인님 필요 (Vercel Dashboard → Settings → Environment Variables)
+- [ ] 브라우저 결제창 → confirmPayment → 쿠폰 발행 E2E (Vercel 환경변수 등록 후)
 - [ ] 웹훅 실 테스트 (Toss 테스트 환경)
 
 ---
