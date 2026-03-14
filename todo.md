@@ -191,18 +191,31 @@
 - [x] 웹훅 핸들러 (/api/payments/webhook) 코드 검증: HMAC 서명, idempotency, DLQ
 - [x] coupon-activate Edge Function 코드 검증: 생성/활성화/만료
 - [x] toss.ts 클라이언트 라이브러리 코드 검증: timeout, retry, 에러 분류
-- [ ] 토스페이먼츠 테스트 API 키 발급 + .env.local 등록 — 주인님 필요
-- [ ] 결제 → 쿠폰 발행 → 쿠폰 사용 E2E smoke test
+- [x] 토스페이먼츠 테스트 API 키 발급 + .env.local 등록 — 완료 (2026-03-15)
+- [x] Toss API 연결 확인 (인증 헤더 + confirmPayment 에러 코드 정상)
+- [ ] Vercel 환경변수에 TOSS 키 3개 등록 — 주인님 필요 (Vercel Dashboard → Settings → Environment Variables)
+- [ ] 브라우저 결제창 → confirmPayment → 쿠폰 발행 E2E (Vercel 환경변수 등록 후)
 - [ ] 웹훅 실 테스트 (Toss 테스트 환경)
 
 ---
 
-## Sprint 5~7: Patent Engine (v0.5~0.7)
+## Sprint 5: Patent Engine (v0.5) — 완료 (2026-03-15)
 
-- [ ] 인과그래프 역추적 + IIS + Primary Fix
-- [ ] 수정 델타 + 간선 보정
-- [ ] 검증 큐 프로 워크플로우
-- [ ] Patent 통합 E2E
+- [x] causal-analysis Edge Function: DB 스키마 정렬, 22개 에러 패턴 로드
+- [x] edge-weight-calibration Edge Function: DB 스키마 정렬, dry_run 성공
+- [x] 인과그래프 역추적 + IIS + Primary Fix 코드 검증
+
+## Sprint 6-7: 수정 델타 + 프로 워크플로우 (v0.6-0.7) — 완료 (2026-03-15)
+
+- [x] edit-deltas API: DB 스키마 검증 완료
+- [x] causal-analysis API route: DB 스키마 검증 완료
+- [x] use-verification-queue hook: review_state + measurement_state_id JOIN 수정
+- [x] use-causal-graph hook: causal_graph_edges + error_patterns 실제 테이블로 수정
+- [x] /api/dashboard/stats route 신규 생성 (프로 대시보드 의존)
+- [x] 프로 대시보드: MemberSummary 스키마 정렬
+- [x] verification-card: 코드 검증 완료
+- [x] edit-delta-history: 코드 검증 완료
+- [ ] Patent 통합 E2E (실 사용자 데이터로 테스트)
 
 ---
 

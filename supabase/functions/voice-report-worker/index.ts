@@ -38,7 +38,6 @@ interface CacheRow {
   transcript: string | null;
 }
 
-const CHAT_API_URL = 'https://api.openai.com/v1/chat/completions';
 const GROQ_CHAT_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 
 const STRUCTURING_SYSTEM_PROMPT = `당신은 골프 코칭 리포트를 작성하는 AI 어시스턴트입니다.
@@ -94,14 +93,10 @@ function createSupabaseAdmin() {
   return createClient(url, key);
 }
 
-function getOpenAIKey(): string {
-  const key = Deno.env.get('OPENAI_API_KEY');
-  if (!key) throw new Error('Missing OPENAI_API_KEY');
+function getGroqKey(): string {
+  const key = Deno.env.get('GROQ_API_KEY');
+  if (!key) throw new Error('Missing GROQ_API_KEY');
   return key;
-}
-
-function getGroqKey(): string | null {
-  return Deno.env.get('GROQ_API_KEY') ?? null;
 }
 
 function json(data: unknown, status = 200) {
@@ -178,45 +173,6 @@ async function fetchMemberContext(supabase: SupabaseAdmin, proId: string, member
   ].filter(Boolean).join('\n');
 }
 
-async function callChatAPI(
-  url: string,
-  apiKey: string,
-  model: string,
-  messages: { role: string; content: string }[],
-  useJsonMode: boolean,
-): Promise<{ content: string; provider: 'openai' | 'groq' }> {
-  const body: Record<string, unknown> = {
-    model,
-    messages,
-    temperature: 0.3,
-    max_tokens: 2000,
-  };
-  if (useJsonMode) {
-    body.response_format = { type: 'json_object' };
-  }
-
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(body),
-  });
-
-  if (!response.ok) {
-    const errorBody = await response.text();
-    const error = new Error(`Chat API error: ${response.status} - ${errorBody}`);
-    (error as Error & { status?: number }).status = response.status;
-    throw error;
-  }
-
-  const result = await response.json();
-  const content = result.choices?.[0]?.message?.content;
-  if (!content) throw new Error('LLM returned empty response');
-  return { content, provider: url.includes('groq') ? 'groq' : 'openai' };
-}
-
 async function structureTranscript(
   transcript: string,
   glossary: string,
@@ -235,30 +191,29 @@ async function structureTranscript(
     { role: 'user', content: userPrompt },
   ];
 
-  // Try OpenAI first
-  try {
-    const { content } = await callChatAPI(CHAT_API_URL, getOpenAIKey(), 'gpt-4o', messages, true);
-    return JSON.parse(content) as StructuredReport;
-  } catch (err) {
-    const status = (err as Error & { status?: number }).status;
-    const isQuotaOrAuth = status === 429 || status === 402 || status === 401;
-    if (!isQuotaOrAuth) throw err;
-    console.warn(`OpenAI ChatGPT failed (${status}), attempting Groq fallback...`);
+  const response = await fetch(GROQ_CHAT_API_URL, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${getGroqKey()}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'llama-3.3-70b-versatile',
+      messages,
+      response_format: { type: 'json_object' },
+      temperature: 0.3,
+      max_tokens: 2000,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    throw new Error(`Groq Chat API error: ${response.status} - ${errorBody}`);
   }
 
-  // Fallback to Groq
-  const groqKey = getGroqKey();
-  if (!groqKey) {
-    throw new Error('OpenAI quota exceeded and no GROQ_API_KEY configured for fallback');
-  }
-
-  const { content } = await callChatAPI(
-    GROQ_CHAT_API_URL,
-    groqKey,
-    'llama-3.3-70b-versatile',
-    messages,
-    true,
-  );
+  const result = await response.json();
+  const content = result.choices?.[0]?.message?.content;
+  if (!content) throw new Error('LLM returned empty response');
   return JSON.parse(content) as StructuredReport;
 }
 
@@ -446,7 +401,7 @@ serve(async (req: Request) => {
     return json(
       {
         ok: false,
-        error: error instanceof Error ? error.message : String(error),
+        error: error instanceof Error ? error.message : (typeof error === 'object' && error !== null ? JSON.stringify(error) : String(error)),
       },
       500,
     );
