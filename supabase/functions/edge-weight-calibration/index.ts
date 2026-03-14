@@ -464,7 +464,7 @@ serve(async (req: Request) => {
 
     const result = await calibrate(supabase, batch_size, dry_run);
 
-    const statusCode = result.total_deltas_processed === 0 ? 204 : 200;
+    const statusCode = 200;
 
     return new Response(
       JSON.stringify({ success: true, result }),
