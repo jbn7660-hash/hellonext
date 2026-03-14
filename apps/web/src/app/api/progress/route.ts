@@ -112,10 +112,10 @@ export async function GET(request: NextRequest) {
     // Most common error patterns from AI observations (visible_tags contains error pattern data)
     const { data: observationsRaw } = await supabase
       .from('ai_observations')
-      .select('id, visible_tags')
+      .select('id, visible_tags, created_at')
       .eq('member_id', memberProfile.id)
       .gte('created_at', startISO);
-    const observations = observationsRaw as Array<Pick<Tables<'ai_observations'>, 'id' | 'visible_tags'>> | null;
+    const observations = observationsRaw as Array<Pick<Tables<'ai_observations'>, 'id' | 'visible_tags' | 'created_at'>> | null;
 
     const errorCounts: Record<string, number> = {};
     (observations ?? []).forEach((obs) => {
@@ -142,16 +142,59 @@ export async function GET(request: NextRequest) {
     // Weekly swings
     const weeklySwings = getWeeklyBreakdown(swings ?? [], range);
 
-    // Position trends (simplified)
+    // Position trends — computed from ai_observations error patterns per position
+    const ERROR_PATTERN_POSITIONS: Record<string, string> = {
+      'EP-001': 'P1', 'EP-002': 'P1', 'EP-003': 'P1',
+      'EP-004': 'P2', 'EP-005': 'P2', 'EP-006': 'P2',
+      'EP-007': 'P3', 'EP-008': 'P3', 'EP-009': 'P3', 'EP-010': 'P3',
+      'EP-011': 'P4', 'EP-012': 'P4', 'EP-013': 'P4', 'EP-021': 'P4', 'EP-022': 'P4',
+      'EP-014': 'P5', 'EP-015': 'P5',
+      'EP-016': 'P6', 'EP-017': 'P6',
+      'EP-018': 'P7',
+      'EP-019': 'P8', 'EP-020': 'P8',
+    };
+
+    // Split observations into recent half and previous half of the date range
+    const midpointISO = new Date((startDate.getTime() + now.getTime()) / 2).toISOString();
+    const recentObs = (observations ?? []).filter((o) => o.created_at >= midpointISO);
+    const previousObs = (observations ?? []).filter((o) => o.created_at < midpointISO);
+
+    function countErrorsByPosition(obs: typeof observations): Record<string, number> {
+      const counts: Record<string, number> = {};
+      (obs ?? []).forEach((o) => {
+        const tags = o.visible_tags ?? [];
+        if (Array.isArray(tags)) {
+          (tags as Array<Record<string, unknown>>).forEach((tag) => {
+            const code = tag['error_pattern_code'] as string | null;
+            const pos = code ? ERROR_PATTERN_POSITIONS[code] : null;
+            if (pos) {
+              counts[pos] = (counts[pos] ?? 0) + 1;
+            }
+          });
+        }
+      });
+      return counts;
+    }
+
+    const recentErrors = countErrorsByPosition(recentObs);
+    const previousErrors = countErrorsByPosition(previousObs);
+    const recentTotal = Math.max(recentObs.length, 1);
+    const previousTotal = Math.max(previousObs.length, 1);
+
     const positions = ['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7', 'P8'];
     const positionTrends = positions
-      .map((pos) => ({
-        position: pos,
-        recent_score: Math.round(50 + Math.random() * 40), // Placeholder — real implementation would compute from observations
-        previous_score: Math.round(50 + Math.random() * 40),
-        trend: (['improving', 'stable', 'declining'] as const)[Math.floor(Math.random() * 3)]!,
-      }))
-      .filter((pt) => pt.recent_score > 0);
+      .map((pos) => {
+        // Score: 100 minus error rate per observation (clamped 0-100)
+        const recentRate = (recentErrors[pos] ?? 0) / recentTotal;
+        const previousRate = (previousErrors[pos] ?? 0) / previousTotal;
+        const recentScore = Math.round(Math.max(0, Math.min(100, 100 - recentRate * 100)));
+        const previousScore = Math.round(Math.max(0, Math.min(100, 100 - previousRate * 100)));
+        const diff = recentScore - previousScore;
+        const trend: 'improving' | 'stable' | 'declining' =
+          diff > 5 ? 'improving' : diff < -5 ? 'declining' : 'stable';
+        return { position: pos, recent_score: recentScore, previous_score: previousScore, trend };
+      })
+      .filter((pt) => pt.recent_score < 100 || pt.previous_score < 100); // Only show positions with detected errors
 
     // Recent reports linked to this member
     const { data: reportsRaw } = await supabase
