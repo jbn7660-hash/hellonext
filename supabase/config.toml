@@ -37,3 +37,36 @@ verify_jwt = false
 
 [functions.voice-transcribe]
 verify_jwt = false
+
+[functions.voice-transcribe-worker]
+verify_jwt = false
+
+[functions.voice-report-worker]
+verify_jwt = false
+
+[functions.voice-to-report]
+verify_jwt = false
+
+[functions.causal-analysis]
+verify_jwt = false
+
+[functions.measurement-confidence]
+verify_jwt = false
+
+[functions.swing-analysis]
+verify_jwt = false
+
+[functions.verification-handler]
+verify_jwt = false
+
+[functions.send-notification]
+verify_jwt = false
+
+[functions.push-send]
+verify_jwt = false
+
+[functions.coupon-activate]
+verify_jwt = false
+
+[functions.edge-weight-calibration]
+verify_jwt = false

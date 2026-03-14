@@ -136,7 +136,10 @@ async function loadVoiceMemo(supabase: SupabaseAdmin, memoId: string): Promise<V
 
 async function downloadStoredAudio(supabase: SupabaseAdmin, storagePath: string): Promise<Blob> {
   const { data, error } = await supabase.storage.from('audio').download(storagePath);
-  if (error || !data) throw error ?? new Error(`Failed to download audio from storage: ${storagePath}`);
+  if (error || !data) {
+    const errMsg = error instanceof Error ? error.message : (typeof error === 'object' && error !== null ? JSON.stringify(error) : String(error ?? 'unknown'));
+    throw new Error(`Failed to download audio from storage: ${storagePath} — ${errMsg}`);
+  }
   return data;
 }
 
@@ -390,7 +393,7 @@ serve(async (req: Request) => {
       const result = await processJob(supabase, job);
       return json({ ok: true, processed: true, result });
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
+      const message = error instanceof Error ? error.message : (typeof error === 'object' && error !== null ? JSON.stringify(error) : String(error));
       await markFailure(supabase, job, message);
       return json({ ok: false, processed: true, error: message, jobId: job.id }, 500);
     }
@@ -398,7 +401,7 @@ serve(async (req: Request) => {
     return json(
       {
         ok: false,
-        error: error instanceof Error ? error.message : String(error),
+        error: error instanceof Error ? error.message : (typeof error === 'object' && error !== null ? JSON.stringify(error) : String(error)),
       },
       500,
     );
