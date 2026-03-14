@@ -7,7 +7,7 @@
  * 1. Receive pose_data (keypoints per frame) + feel_check + member_id
  * 2. Fetch AI scope settings (F-013) for the pro-member pair
  * 3. Compute swing metrics (joint angles, tempo, position markers)
- * 4. Generate AI observation via GPT-4o in "curious observer" tone
+ * 4. Generate AI observation via GPT-4o (Groq fallback) in "curious observer" tone
  * 5. Store ai_observation record + update swing_video status
  * 6. Broadcast result via Realtime
  *
@@ -44,6 +44,45 @@ interface AIScopeSettings {
 }
 
 const CHAT_API_URL = 'https://api.openai.com/v1/chat/completions';
+const GROQ_CHAT_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
+
+function getGroqKey(): string | null {
+  return Deno.env.get('GROQ_API_KEY') ?? null;
+}
+
+async function callChatAPI(
+  url: string,
+  apiKey: string,
+  model: string,
+  messages: { role: string; content: string }[],
+): Promise<{ content: string; provider: 'openai' | 'groq' }> {
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model,
+      messages,
+      response_format: { type: 'json_object' },
+      temperature: 0.4,
+      max_tokens: 1500,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    const error = new Error(`Chat API error: ${response.status} - ${errorBody}`);
+    (error as Error & { status?: number }).status = response.status;
+    throw error;
+  }
+
+  const result = await response.json();
+  const content = result.choices?.[0]?.message?.content;
+  if (!content) throw new Error('LLM returned empty response');
+  return { content, provider: url.includes('groq') ? 'groq' : 'openai' };
+}
 
 const OBSERVATION_SYSTEM_PROMPT = `당신은 골프 스윙을 "관찰"하는 AI 어시스턴트입니다.
 
@@ -151,47 +190,51 @@ serve(async (req: Request) => {
     // 3. Compute swing metrics from pose data
     const metrics = computeSwingMetrics(pose_data);
 
-    // 4. Generate AI observation
+    // 4. Generate AI observation (OpenAI → Groq fallback)
     const openaiKey = Deno.env.get('OPENAI_API_KEY');
     if (!openaiKey) throw new Error('Missing OPENAI_API_KEY');
 
     const userPrompt = buildAnalysisPrompt(metrics, feelCheck, scopeSettings);
+    const messages = [
+      { role: 'system', content: OBSERVATION_SYSTEM_PROMPT },
+      { role: 'user', content: userPrompt },
+    ];
 
-    const llmResponse = await fetch(CHAT_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${openaiKey}`,
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        messages: [
-          { role: 'system', content: OBSERVATION_SYSTEM_PROMPT },
-          { role: 'user', content: userPrompt },
-        ],
-        response_format: { type: 'json_object' },
-        temperature: 0.4,
-        max_tokens: 1500,
-      }),
-    });
+    let llmContent: string;
 
-    if (!llmResponse.ok) {
-      const errText = await llmResponse.text();
-      console.error('OpenAI API error response:', errText);
-      throw new Error(`OpenAI API error: ${llmResponse.status} - ${errText}`);
-    }
+    // Try OpenAI first
+    try {
+      const result = await callChatAPI(CHAT_API_URL, openaiKey, 'gpt-4o', messages);
+      llmContent = result.content;
+    } catch (err) {
+      const status = (err as Error & { status?: number }).status;
+      const isQuotaOrAuth = status === 429 || status === 402 || status === 401;
+      if (!isQuotaOrAuth) throw err;
 
-    const llmData = await llmResponse.json();
-    if (!llmData.choices?.[0]?.message?.content) {
-      throw new Error('Invalid OpenAI response format');
+      console.warn(`OpenAI failed (${status}), attempting Groq fallback...`);
+
+      const groqKey = getGroqKey();
+      if (!groqKey) {
+        throw new Error(
+          'OpenAI quota exceeded and no GROQ_API_KEY configured for fallback'
+        );
+      }
+
+      const result = await callChatAPI(
+        GROQ_CHAT_API_URL,
+        groqKey,
+        'llama-3.3-70b-versatile',
+        messages,
+      );
+      llmContent = result.content;
     }
 
     let observation;
     try {
-      observation = JSON.parse(llmData.choices[0].message.content);
+      observation = JSON.parse(llmContent);
     } catch (parseErr) {
-      console.error('Failed to parse OpenAI response:', llmData.choices[0].message.content);
-      throw new Error('Invalid JSON in OpenAI response');
+      console.error('Failed to parse LLM response:', llmContent);
+      throw new Error('Invalid JSON in LLM response');
     }
 
     // 5. Apply visibility filter (hidden patterns → visible: false)
@@ -206,34 +249,69 @@ serve(async (req: Request) => {
       }
     }
 
-    // 6. Store AI observation
+    // 6. Store computed metrics in pose_data
+    const { error: poseUpsertError } = await supabase
+      .from('pose_data')
+      .upsert({
+        video_id,
+        keypoints: pose_data.map((f) => ({ frame_index: f.frame_index, keypoints: f.keypoints })),
+        angles: metrics.phase_angles,
+        metrics: {
+          total_frames: metrics.total_frames,
+          phases: metrics.phases,
+          tempo_ratio: metrics.tempo_ratio,
+          backswing_duration_ms: metrics.backswing_duration_ms,
+          downswing_duration_ms: metrics.downswing_duration_ms,
+        },
+      }, { onConflict: 'video_id' });
+
+    if (poseUpsertError) {
+      console.error('Failed to save pose_data:', JSON.stringify(poseUpsertError));
+    }
+
+    // 7. Separate visible vs hidden observations
+    const visibleObs = (observation.observations ?? []).filter(
+      (obs: { visible?: boolean }) => obs.visible !== false,
+    );
+    const hiddenObs = (observation.observations ?? []).filter(
+      (obs: { visible?: boolean }) => obs.visible === false,
+    );
+    const hasConsultationFlag = (observation.observations ?? []).some(
+      (obs: { coach_consultation_flag?: boolean }) => obs.coach_consultation_flag === true,
+    );
+
+    // 8. Store AI observation
+    const observationText = [
+      observation.summary ?? '',
+      observation.feel_accuracy_note ? `\n[Feel Check] ${observation.feel_accuracy_note}` : '',
+    ].join('');
+
+    const toneMap: Record<string, string> = {
+      observe_only: 'observe',
+      gentle_suggest: 'suggest',
+      specific_guide: 'guide',
+    };
+
     const { data: savedObservation, error: insertError } = await supabase
       .from('ai_observations')
       .insert({
-        swing_video_id: video_id,
+        video_id,
         member_id,
-        feel_check_id,
-        observations: observation.observations,
-        feel_accuracy_note: observation.feel_accuracy_note,
-        summary: observation.summary,
-        tone_level: scopeSettings.tone_level,
-        raw_metrics: metrics,
+        observation_text: observationText,
+        tone: toneMap[scopeSettings.tone_level] ?? 'observe',
+        coach_consultation_flag: hasConsultationFlag,
+        visible_tags: visibleObs,
+        hidden_tags: hiddenObs,
       })
       .select('id')
       .single();
 
     if (insertError) {
-      console.error('Failed to save observation:', insertError);
+      console.error('Failed to save observation:', JSON.stringify(insertError));
       throw new Error('Failed to save observation');
     }
 
-    // 7. Update swing video status
-    await supabase
-      .from('swing_videos')
-      .update({ status: 'analyzed', analysis_id: savedObservation.id })
-      .eq('id', video_id);
-
-    // 8. Broadcast via Realtime
+    // 9. Broadcast via Realtime
     await supabase.channel(`member-${member_id}`).send({
       type: 'broadcast',
       event: 'swing_analyzed',
@@ -251,9 +329,17 @@ serve(async (req: Request) => {
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (err) {
-    console.error('swing-analysis error:', err);
+    const errorMessage = err instanceof Error
+      ? err.message
+      : JSON.stringify(err);
+    console.error('swing-analysis error:', errorMessage);
     return new Response(
-      JSON.stringify({ error: 'Internal error' }),
+      JSON.stringify({
+        error: {
+          code: 'SWING_ANALYSIS_ERROR',
+          message: errorMessage,
+        },
+      }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
