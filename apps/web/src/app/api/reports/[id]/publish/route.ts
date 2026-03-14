@@ -98,23 +98,25 @@ export async function POST(_request: NextRequest, { params }: RouteParams) {
       : report.member_profiles;
 
     if (supabaseUrl && serviceKey && memberProfile) {
-      fetch(`${supabaseUrl}/functions/v1/send-notification`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${serviceKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          user_id: memberProfile.user_id,
-          type: 'report_published',
-          title: '새 리포트가 도착했습니다',
-          body: report.title || '레슨 리포트',
-          data: { report_id: id },
-          channels: ['kakao', 'push', 'in_app'],
-        }),
-      }).catch((err) => {
+      try {
+        await fetch(`${supabaseUrl}/functions/v1/send-notification`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${serviceKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            user_id: memberProfile.user_id,
+            type: 'report_published',
+            title: '새 리포트가 도착했습니다',
+            body: report.title || '레슨 리포트',
+            data: { report_id: id },
+            channels: ['kakao', 'push', 'in_app'],
+          }),
+        });
+      } catch (err) {
         logger.error('Failed to trigger notification', { id, error: err });
-      });
+      }
     }
 
     logger.info('Report published successfully', { id, memberId: report.member_id, userId: user.id });

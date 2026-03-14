@@ -130,27 +130,29 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
       if (supabaseUrl && serviceKey) {
-        // Trigger FSM transition via Edge Function (non-blocking, DC-5 compliant)
-        fetch(`${supabaseUrl}/functions/v1/voice-fsm-controller`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${serviceKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            action: 'bindTarget',
-            memo_id: id,
-            pro_id: proProfile.id,
-            member_id: parsed.data.member_id,
-            audio_url: data.audio_url,
-            duration_sec: data.duration_sec,
-            transcript: data.transcript ?? null,
-            structured_json: data.structured_json ?? null,
-          }),
-        }).catch((err) => {
+        // Trigger FSM transition via Edge Function (DC-5 compliant)
+        try {
+          await fetch(`${supabaseUrl}/functions/v1/voice-fsm-controller`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${serviceKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              action: 'bindTarget',
+              memo_id: id,
+              pro_id: proProfile.id,
+              member_id: parsed.data.member_id,
+              audio_url: data.audio_url,
+              duration_sec: data.duration_sec,
+              transcript: data.transcript ?? null,
+              structured_json: data.structured_json ?? null,
+            }),
+          });
+        } catch (err) {
           logger.error('Failed to trigger FSM bindTarget', { memoId: id, error: err });
           // Don't fail the PATCH - memo was updated successfully
-        });
+        }
       }
     }
 

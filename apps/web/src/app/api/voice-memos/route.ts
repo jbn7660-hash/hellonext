@@ -168,20 +168,22 @@ export async function POST(request: NextRequest) {
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     if (supabaseUrl && serviceKey) {
-      fetch(`${supabaseUrl}/functions/v1/voice-to-report`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${serviceKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          memo_id: memo.id,
-          pro_id: proProfile.id,
-          member_id: member_id ?? null,
-        }),
-      }).catch((err) => {
+      try {
+        await fetch(`${supabaseUrl}/functions/v1/voice-to-report`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${serviceKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            memo_id: memo.id,
+            pro_id: proProfile.id,
+            member_id: member_id ?? null,
+          }),
+        });
+      } catch (err) {
         logger.error('Failed to trigger pipeline', { error: err });
-      });
+      }
     }
 
     return NextResponse.json({ data: memo }, { status: 201 });
