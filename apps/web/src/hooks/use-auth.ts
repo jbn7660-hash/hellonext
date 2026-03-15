@@ -37,32 +37,32 @@ export function useAuth() {
   const fetchProfile = useCallback(async (userId: string) => {
     try {
       // Check pro profile first
-      const { data: proProfile } = await supabase
+      const { data: proProfile, error: proError } = await supabase
         .from('pro_profiles')
-        .select('*')
+        .select('id, user_id, studio_name, display_name, bio, phone, created_at')
         .eq('user_id', userId)
-        .single();
+        .maybeSingle();
 
-      if (proProfile) {
+      if (proProfile && !proError) {
         setRole('pro');
         setProfile(proProfile);
         return;
       }
 
       // Check member profile
-      const { data: memberProfile } = await supabase
+      const { data: memberProfile, error: memberError } = await supabase
         .from('member_profiles')
-        .select('*')
+        .select('id, user_id, display_name, handicap, phone, created_at')
         .eq('user_id', userId)
-        .single();
+        .maybeSingle();
 
-      if (memberProfile) {
+      if (memberProfile && !memberError) {
         setRole('member');
         setProfile(memberProfile);
         return;
       }
 
-      logger.warn('User has no profile', { userId });
+      logger.warn('User has no profile', { userId, proError, memberError });
     } catch (err) {
       logger.error('Failed to fetch profile', { userId, error: err });
     }
