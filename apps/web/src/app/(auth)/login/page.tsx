@@ -73,20 +73,27 @@ function LoginContent() {
       setError(null);
 
       try {
-        const { error: authError } = await supabase.auth.signInWithOAuth({
+        const { data, error: authError } = await supabase.auth.signInWithOAuth({
           provider,
           options: {
             redirectTo: `${window.location.origin}/callback?next=${encodeURIComponent(redirectTo)}`,
+            skipBrowserRedirect: false,
           },
         });
 
         if (authError) {
           logger.error(`${provider} OAuth failed`, { error: authError.message });
-          setError(`${provider === 'kakao' ? '카카오' : '구글'} 로그인에 실패했습니다. 다시 시도해주세요.`);
+          setError(`${provider === 'kakao' ? '카카오' : '구글'} 로그인에 실패했습니다: ${authError.message}`);
+          return;
+        }
+
+        // In case the browser didn't auto-redirect (e.g. PKCE flow)
+        if (data?.url) {
+          window.location.href = data.url;
         }
       } catch (err) {
         logger.error(`${provider} login unexpected error`, { error: err });
-        setError('알 수 없는 오류가 발생했습니다. 다시 시도해주세요.');
+        setError(`오류: ${err instanceof Error ? err.message : String(err)}`);
       } finally {
         setLoading(false);
       }
