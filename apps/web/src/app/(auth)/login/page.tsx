@@ -147,6 +147,17 @@ function LoginContent() {
             return;
           }
 
+          // Check if session was created (autoconfirm ON)
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session) {
+            // Autoconfirm: user is already logged in
+            logger.info('Signup with autoconfirm — redirecting', { email });
+            router.push(redirectTo);
+            router.refresh();
+            return;
+          }
+
+          // Email confirmation required
           setError(null);
           alert('확인 이메일을 발송했습니다. 이메일을 확인해주세요.');
         } else {

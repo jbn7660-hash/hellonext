@@ -49,8 +49,10 @@ export async function GET(request: NextRequest) {
     const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
 
     if (exchangeError) {
+      console.error('Auth exchange failed:', exchangeError.message, exchangeError.status);
       const loginUrl = new URL('/login', origin);
-      loginUrl.searchParams.set('error', encodeURIComponent('auth_exchange_failed'));
+      loginUrl.searchParams.set('error', encodeURIComponent(`auth_exchange_failed`));
+      loginUrl.searchParams.set('detail', encodeURIComponent(exchangeError.message));
       return NextResponse.redirect(loginUrl);
     }
 
