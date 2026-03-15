@@ -75,7 +75,7 @@ async function getUserRole(
     .from('pro_profiles')
     .select('id')
     .eq('user_id', userId)
-    .single();
+    .maybeSingle();
 
   if (proProfile) return 'pro';
 
@@ -83,7 +83,7 @@ async function getUserRole(
     .from('member_profiles')
     .select('id')
     .eq('user_id', userId)
-    .single();
+    .maybeSingle();
 
   if (memberProfile) return 'member';
 

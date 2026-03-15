@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
       .from('pro_profiles')
       .select('id, studio_name')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
 
     const proProfile = proProfileRaw as { id: string; studio_name: string | null } | null;
 
@@ -97,7 +97,7 @@ export async function GET(request: NextRequest) {
       .from('member_profiles')
       .select('id')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
 
     const memberProfile = memberProfileRaw as { id: string } | null;
 
