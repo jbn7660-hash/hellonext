@@ -69,7 +69,7 @@ export default function ProOnboardingPage() {
           return;
         }
 
-        router.replace('/(pro)/dashboard');
+        router.replace('/dashboard');
         router.refresh();
       } catch {
         setError('알 수 없는 오류가 발생했습니다.');
