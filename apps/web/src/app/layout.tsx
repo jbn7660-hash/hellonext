@@ -9,6 +9,7 @@
  */
 
 import type { Metadata, Viewport } from 'next';
+import Script from 'next/script';
 // TODO: Re-enable PwaProvider after hydration issue is resolved
 // import { PwaProvider } from '@/components/pwa/pwa-provider';
 import './globals.css';
@@ -62,6 +63,11 @@ export default function RootLayout({
         <link rel="preconnect" href="https://cdn.jsdelivr.net" />
       </head>
       <body className="min-h-screen bg-surface text-text-primary">
+        {/* TossPayments SDK — loaded async for payment pages */}
+        <Script
+          src="https://js.tosspayments.com/v1/payment"
+          strategy="lazyOnload"
+        />
         {/* TODO: Re-enable PwaProvider after hydration issue is resolved */}
         {/* <PwaProvider> */}
           {children}
