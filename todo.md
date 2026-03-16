@@ -219,6 +219,39 @@
 
 ---
 
+## UX/UI v6 리스킨 (2026-03-15~16) ✅ 완료
+
+- [x] Tailwind config 전면 교체 (dawn/warm/ink 시스템, Pretendard)
+- [x] globals.css CSS 변수 전면 교체 + 4개 신규 애니메이션
+- [x] Member layout 리스킨 (프로스트 글래스 탭바, dawn bg)
+- [x] Practice 페이지 리스킨
+- [x] 로그인 페이지 리스킨
+- [x] Dashboard static preview data 적용
+- [x] TypeScript 에러 0개 달성 (288→0)
+- [x] Storybook 37개 스토리 빌드
+- [x] SwingBook 페이지 v6 리스킨
+- [x] Progress 페이지 v6 리스킨
+- [x] Redeem 페이지 v6 리스킨
+- [x] Feel Check 컴포넌트 v6 리스킨 (night mode)
+- [x] SwingCamera 컴포넌트 v6 리스킨 (night mode + bone skeleton)
+- [x] Pro Dashboard 페이지 v6 리스킨
+- [x] Pro Reports + Reports/[id] 페이지 v6 리스킨
+- [x] Pro Coupons 페이지 v6 리스킨
+- [x] Pro Subscription 페이지 v6 리스킨
+- [x] Pro Onboarding 페이지 v6 리스킨
+- [x] Pro Layout v6 리스킨
+- [x] Pro AI Scope 페이지 v6 리스킨
+
+---
+
+## Sprint 4 추가: 토스 결제 Callback (2026-03-16) ✅ 완료
+
+- [x] `/api/payments/callback` GET 라우트 구현 (쿠폰 번들 + 구독 빌링키)
+- [x] TossPayments SDK `<Script>` 태그 root layout에 추가
+- [x] 에러 핸들링 + payment_reconciliation 폴백
+
+---
+
 ## Sprint 8: MVP Launch (v1.0)
 
 - [ ] 전체 E2E 테스트 통과
@@ -230,4 +263,9 @@
 ## 메모
 - 2026-03-12: 코드 93+ 파일은 AI 생성 산출물. 실행 가능 여부 미검증 상태.
 - 2026-03-12: Phase 0(코드 품질 검증)이 Sprint 1 전에 반드시 필요.
+- 2026-03-15: Phase 0 완료 — TS 에러 0개, Next.js 빌드 통과, Storybook 빌드 완료
+- 2026-03-15: Sprint 2~7 백엔드 전부 완료, Vercel 프로덕션 배포
+- 2026-03-15~16: v6 디자인 시스템 전체 적용 완료 (13개 페이지/컴포넌트)
+- 2026-03-16: 토스 callback 라우트 구현 완료
+- 2026-03-16: 3팀(마케팅/브랜드/세일즈) 교차검증 종합 리포트 완성
 - apps/mobile은 v0.3+ 에서 본격 연동 (현재 스캐폴딩만 존재)
