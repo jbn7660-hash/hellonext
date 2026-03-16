@@ -232,7 +232,7 @@ export default function SwingBookPage() {
 
       {/* Header + Mode Toggles */}
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-bold text-text-primary">내 스윙북</h2>
+        <h2 className="text-lg font-extrabold tracking-[-0.4px] text-ink">내 스윙북</h2>
         <div className="flex gap-2">
           {entries.length >= 2 && (
             <button
@@ -244,8 +244,8 @@ export default function SwingBookPage() {
               className={cn(
                 'text-xs px-3 py-1 rounded-full font-medium transition-all duration-200',
                 compareMode
-                  ? 'bg-brand-primary text-white'
-                  : 'bg-gray-100 text-text-secondary hover:bg-gray-200'
+                  ? 'bg-ink text-dawn'
+                  : 'bg-warm text-ink-3 hover:bg-border'
               )}
             >
               비교
@@ -261,8 +261,8 @@ export default function SwingBookPage() {
               className={cn(
                 'text-xs px-3 py-1 rounded-full font-medium transition-all duration-200',
                 selectionMode
-                  ? 'bg-status-warning text-white'
-                  : 'bg-gray-100 text-text-secondary hover:bg-gray-200'
+                  ? 'bg-caution text-dawn'
+                  : 'bg-warm text-ink-3 hover:bg-border'
               )}
             >
               선택
@@ -283,13 +283,13 @@ export default function SwingBookPage() {
               setLoading(true);
               pageRef.current = 1;
             }}
-            className="input-field w-full text-sm"
+            className="w-full text-sm px-3.5 py-2.5 rounded-xl border border-border bg-card text-ink outline-none focus:border-ink-4 placeholder:text-ink-4"
           />
           <div className="flex gap-2">
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as SortOption)}
-              className="input-field flex-1 text-xs"
+              className="flex-1 text-xs px-3 py-2.5 rounded-xl border border-border bg-card text-ink outline-none focus:border-ink-4"
             >
               <option value="date-desc">최신순</option>
               <option value="date-asc">오래된 순</option>
@@ -300,7 +300,7 @@ export default function SwingBookPage() {
               <button
                 type="button"
                 onClick={() => setFilterError(null)}
-                className="text-xs px-3 py-2 rounded-full bg-status-warning/10 text-status-warning font-medium"
+                className="text-xs px-3 py-2 rounded-full bg-caution-surface text-caution font-medium"
               >
                 ✕ {filterError}
               </button>
@@ -311,8 +311,8 @@ export default function SwingBookPage() {
 
       {/* Selection Toolbar */}
       {selectionMode && bulkSelection.size > 0 && (
-        <div className="mb-4 p-3 bg-status-warning/10 rounded-xl flex items-center justify-between animate-fade-in">
-          <span className="text-sm font-medium text-status-warning">
+        <div className="mb-4 p-3 bg-caution-surface rounded-2xl border border-border shadow-card flex items-center justify-between animate-fade-in">
+          <span className="text-sm font-medium text-caution">
             {bulkSelection.size}개 선택됨
           </span>
           <div className="flex gap-2">
@@ -322,7 +322,7 @@ export default function SwingBookPage() {
                 // TODO: Implement bulk export
                 logger.info('Bulk export', { count: bulkSelection.size });
               }}
-              className="btn-secondary text-xs px-3 py-1.5"
+              className="text-xs px-3 py-1.5 rounded-xl border border-border bg-card text-ink font-medium"
             >
               내보내기
             </button>
@@ -333,7 +333,7 @@ export default function SwingBookPage() {
                 setBulkSelection(new Set());
                 logger.info('Bulk delete', { count: bulkSelection.size });
               }}
-              className="btn-secondary text-xs px-3 py-1.5 text-status-error"
+              className="text-xs px-3 py-1.5 rounded-xl border border-border bg-card text-tension font-medium"
             >
               삭제
             </button>
@@ -343,8 +343,8 @@ export default function SwingBookPage() {
 
       {/* Compare Action Bar */}
       {compareMode && compareSelection.length === 2 && (
-        <div className="mb-4 p-3 bg-brand-primary/10 rounded-xl flex items-center justify-between animate-fade-in">
-          <span className="text-sm text-brand-primary font-medium">2개 영상 선택됨</span>
+        <div className="mb-4 p-3 bg-warmth-surface rounded-2xl border border-border shadow-card flex items-center justify-between animate-fade-in">
+          <span className="text-sm text-warmth font-medium">2개 영상 선택됨</span>
           <button
             type="button"
             onClick={() => {
@@ -352,7 +352,7 @@ export default function SwingBookPage() {
                 `/swingbook/compare?a=${compareSelection[0]}&b=${compareSelection[1]}`
               );
             }}
-            className="btn-primary text-xs px-4 py-1.5"
+            className="text-xs px-4 py-1.5 rounded-xl bg-ink text-dawn font-semibold"
           >
             나란히 비교
           </button>
@@ -368,7 +368,7 @@ export default function SwingBookPage() {
             <button
               type="button"
               onClick={() => router.push('/practice')}
-              className="btn-primary text-sm px-4 py-2"
+              className="text-sm px-4 py-2 rounded-xl bg-ink text-dawn font-semibold"
             >
               연습 시작
             </button>
@@ -379,8 +379,8 @@ export default function SwingBookPage() {
           {Object.entries(groupedEntries).map(([date, dateEntries]) => (
             <div key={date} className="animate-fade-in">
               <div className="flex items-center justify-between mb-2 px-2">
-                <h3 className="text-sm font-semibold text-text-primary">{date}</h3>
-                <span className="text-xs text-text-tertiary">
+                <h3 className="text-sm font-bold tracking-[-0.3px] text-ink">{date}</h3>
+                <span className="text-xs text-ink-4">
                   {dateEntries.length}개
                 </span>
               </div>
@@ -470,18 +470,18 @@ function SwingCard({
         }
       }}
       className={cn(
-        'relative rounded-xl overflow-hidden border-2 transition-all text-left',
+        'relative rounded-2xl overflow-hidden border-2 transition-all text-left shadow-card',
         compareMode && isCompareSelected
-          ? 'border-brand-primary ring-2 ring-brand-primary/20'
+          ? 'border-ink ring-2 ring-ink/20'
           : selectionMode && isBulkSelected
-            ? 'border-status-warning ring-2 ring-status-warning/20'
-            : 'border-transparent hover:border-gray-200'
+            ? 'border-caution ring-2 ring-caution/20'
+            : 'border-transparent hover:border-border'
       )}
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
     >
       {/* Thumbnail with lazy load and blur placeholder */}
-      <div className="aspect-[3/4] bg-gray-100 relative overflow-hidden">
+      <div className="aspect-[3/4] bg-warm relative overflow-hidden">
         <img
           src={entry.thumbnail_url}
           alt="스윙 영상"
@@ -494,14 +494,14 @@ function SwingCard({
         />
 
         {/* Duration badge */}
-        <div className="absolute bottom-2 right-2 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded-md font-medium">
+        <div className="absolute bottom-2 right-2 bg-ink/60 text-dawn text-[10px] px-1.5 py-0.5 rounded-lg font-medium">
           {formatDuration(entry.duration_sec)}
         </div>
 
         {/* Status badges */}
         <div className="absolute top-2 left-2 flex gap-1">
           {entry.status === 'analyzed' && (
-            <div className="bg-brand-primary text-white text-[9px] px-2 py-1 rounded-md font-medium">
+            <div className="bg-ink text-dawn text-[9px] px-2 py-1 rounded-lg font-medium">
               분석완료
             </div>
           )}
@@ -509,25 +509,25 @@ function SwingCard({
 
         {/* Report indicator */}
         {entry.has_report && (
-          <div className="absolute top-2 right-2 bg-status-success text-white text-lg px-1.5 py-0.5 rounded-md">
+          <div className="absolute top-2 right-2 bg-calm text-dawn text-lg px-1.5 py-0.5 rounded-lg">
             📋
           </div>
         )}
 
         {/* Compare/Selection Overlay */}
         {(compareMode || selectionMode) && (
-          <div className="absolute inset-0 bg-black/20 flex items-center justify-center transition-all duration-200">
+          <div className="absolute inset-0 bg-ink/20 flex items-center justify-center transition-all duration-200">
             <div className={cn(
               'w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-200',
               (compareMode && isCompareSelected) || (selectionMode && isBulkSelected)
                 ? compareMode
-                  ? 'bg-brand-primary border-brand-primary'
-                  : 'bg-status-warning border-status-warning'
-                : 'border-white bg-black/30'
+                  ? 'bg-ink border-ink'
+                  : 'bg-caution border-caution'
+                : 'border-dawn bg-ink/30'
             )}>
               {((compareMode && isCompareSelected) || (selectionMode && isBulkSelected)) && (
                 <svg
-                  className="w-4 h-4 text-white"
+                  className="w-4 h-4 text-dawn"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
@@ -542,17 +542,17 @@ function SwingCard({
 
         {/* Hover Info */}
         {isHovering && (
-          <div className="absolute inset-0 bg-black/40 flex items-center justify-center gap-2 animate-fade-in">
+          <div className="absolute inset-0 bg-ink/40 flex items-center justify-center gap-2 animate-fade-in">
             <button
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
                 onDetailsClick();
               }}
-              className="p-2 rounded-full bg-white/20 hover:bg-white/40 transition-colors"
+              className="p-2 rounded-full bg-dawn/20 hover:bg-dawn/40 transition-colors"
               title="상세정보"
             >
-              <svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="currentColor">
+              <svg className="w-4 h-4 text-dawn" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm3.5-9c.83 0 1.5-.67 1.5-1.5S16.33 8 15.5 8 14 8.67 14 9.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S9.33 8 8.5 8 7 8.67 7 9.5 7.67 11 8.5 11zm3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z" />
               </svg>
             </button>
@@ -562,18 +562,18 @@ function SwingCard({
 
       {/* Error tags if any */}
       {entry.error_tags && entry.error_tags.length > 0 && (
-        <div className="p-2 border-t border-gray-100">
+        <div className="p-2 border-t border-border">
           <div className="flex flex-wrap gap-1">
             {entry.error_tags.slice(0, 2).map((tag) => (
               <span
                 key={tag}
-                className="text-[8px] bg-status-warning/10 text-status-warning px-1.5 py-0.5 rounded font-medium"
+                className="text-[8px] bg-caution-surface text-caution px-1.5 py-0.5 rounded font-medium"
               >
                 {tag}
               </span>
             ))}
             {entry.error_tags.length > 2 && (
-              <span className="text-[8px] text-text-tertiary">
+              <span className="text-[8px] text-ink-4">
                 +{entry.error_tags.length - 2}
               </span>
             )}
@@ -594,14 +594,14 @@ function VideoDetailsModal({
   onCompare: () => void;
 }) {
   return (
-    <div className="fixed inset-0 z-50 bg-black/40 animate-fade-in flex items-end">
-      <div className="w-full bg-surface-primary rounded-t-3xl animate-slide-up p-6 max-h-[80vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 bg-ink/40 animate-fade-in flex items-end">
+      <div className="w-full bg-dawn rounded-t-3xl animate-slide-up p-6 max-h-[80vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-text-primary">영상 정보</h3>
+          <h3 className="text-lg font-extrabold tracking-[-0.4px] text-ink">영상 정보</h3>
           <button
             type="button"
             onClick={onClose}
-            className="text-text-tertiary hover:text-text-primary transition-colors"
+            className="text-ink-4 hover:text-ink transition-colors"
           >
             ✕
           </button>
@@ -612,38 +612,38 @@ function VideoDetailsModal({
           <img
             src={entry.thumbnail_url}
             alt="스윙 영상"
-            className="w-full aspect-[3/4] object-cover rounded-lg"
+            className="w-full aspect-[3/4] object-cover rounded-2xl"
           />
 
           {/* Metadata */}
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
-              <span className="text-text-secondary">촬영일</span>
-              <span className="font-medium text-text-primary">
+              <span className="text-ink-3">촬영일</span>
+              <span className="font-medium text-ink">
                 {new Date(entry.created_at).toLocaleDateString('ko-KR')}
               </span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-text-secondary">길이</span>
-              <span className="font-medium text-text-primary">
+              <span className="text-ink-3">길이</span>
+              <span className="font-medium text-ink">
                 {formatDuration(entry.duration_sec)}
               </span>
             </div>
             {entry.confidence_score !== undefined && (
               <div className="flex justify-between text-sm">
-                <span className="text-text-secondary">분석 정확도</span>
-                <span className="font-medium text-text-primary">
+                <span className="text-ink-3">분석 정확도</span>
+                <span className="font-medium text-ink">
                   {(entry.confidence_score * 100).toFixed(0)}%
                 </span>
               </div>
             )}
             <div className="flex justify-between text-sm">
-              <span className="text-text-secondary">상태</span>
+              <span className="text-ink-3">상태</span>
               <span className={cn(
-                'font-medium text-sm px-2 py-1 rounded',
+                'font-medium text-sm px-2 py-1 rounded-lg',
                 entry.status === 'analyzed'
-                  ? 'bg-status-success/10 text-status-success'
-                  : 'bg-gray-100 text-text-tertiary'
+                  ? 'bg-calm-surface text-calm'
+                  : 'bg-warm text-ink-4'
               )}>
                 {entry.status === 'analyzed' ? 'AI 분석 완료' : '분석 중'}
               </span>
@@ -652,9 +652,9 @@ function VideoDetailsModal({
 
           {/* AI Analysis */}
           {entry.ai_analysis && (
-            <div className="border-t border-gray-100 pt-4">
-              <h4 className="text-sm font-semibold text-text-primary mb-2">AI 분석</h4>
-              <p className="text-xs text-text-secondary leading-relaxed">
+            <div className="border-t border-border pt-4">
+              <h4 className="text-sm font-bold tracking-[-0.3px] text-ink mb-2">AI 분석</h4>
+              <p className="text-xs text-ink-3 leading-relaxed">
                 {entry.ai_analysis}
               </p>
             </div>
@@ -662,13 +662,13 @@ function VideoDetailsModal({
 
           {/* Error Tags */}
           {entry.error_tags && entry.error_tags.length > 0 && (
-            <div className="border-t border-gray-100 pt-4">
-              <h4 className="text-sm font-semibold text-text-primary mb-2">감지된 패턴</h4>
+            <div className="border-t border-border pt-4">
+              <h4 className="text-sm font-bold tracking-[-0.3px] text-ink mb-2">감지된 패턴</h4>
               <div className="flex flex-wrap gap-2">
                 {entry.error_tags.map((tag) => (
                   <span
                     key={tag}
-                    className="text-xs bg-status-warning/10 text-status-warning px-2 py-1 rounded-full font-medium"
+                    className="text-xs bg-caution-surface text-caution px-2 py-1 rounded-full font-medium"
                   >
                     {tag}
                   </span>
@@ -678,18 +678,18 @@ function VideoDetailsModal({
           )}
 
           {/* Actions */}
-          <div className="border-t border-gray-100 pt-4 flex gap-2">
+          <div className="border-t border-border pt-4 flex gap-2">
             <button
               type="button"
               onClick={onClose}
-              className="btn-secondary flex-1"
+              className="flex-1 py-3 rounded-xl border-[1.5px] border-border bg-transparent text-ink text-sm font-semibold"
             >
               닫기
             </button>
             <button
               type="button"
               onClick={onCompare}
-              className="btn-primary flex-1"
+              className="flex-1 py-3 rounded-xl bg-ink text-dawn text-sm font-semibold"
             >
               비교하기
             </button>

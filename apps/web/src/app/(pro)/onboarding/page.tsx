@@ -89,15 +89,15 @@ export default function ProOnboardingPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-surface-secondary px-4 py-safe-top pb-safe-bottom">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-dawn px-4 py-safe-top pb-safe-bottom">
       <div className="w-full max-w-sm">
         {/* Header */}
         <div className="mb-8 text-center">
-          <div className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-full bg-brand-100">
+          <div className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-full bg-warm">
             <span className="text-2xl">⛳</span>
           </div>
-          <h1 className="text-2xl font-bold text-text-primary">환영합니다!</h1>
-          <p className="mt-2 text-sm text-text-secondary">
+          <h1 className="text-2xl font-extrabold tracking-tight text-ink">환영합니다!</h1>
+          <p className="mt-2 text-sm text-ink-3">
             레슨 프로 프로필을 완성해주세요
           </p>
         </div>
@@ -108,9 +108,9 @@ export default function ProOnboardingPage() {
           <div>
             <label
               htmlFor="studioName"
-              className="block text-sm font-semibold text-text-primary mb-1.5"
+              className="block text-sm font-semibold text-ink mb-1.5"
             >
-              스튜디오/레슨장 이름 <span className="text-status-error">*</span>
+              스튜디오/레슨장 이름 <span className="text-tension">*</span>
             </label>
             <input
               id="studioName"
@@ -132,7 +132,7 @@ export default function ProOnboardingPage() {
           <div>
             <label
               htmlFor="specialty"
-              className="block text-sm font-semibold text-text-primary mb-1.5"
+              className="block text-sm font-semibold text-ink mb-1.5"
             >
               전문 분야
             </label>
@@ -165,7 +165,7 @@ export default function ProOnboardingPage() {
         {/* Error */}
         {error && (
           <div
-            className="mt-4 rounded-xl border border-status-error/20 bg-status-error/5 px-4 py-3 text-sm text-status-error"
+            className="mt-4 rounded-xl border border-tension/20 bg-tension-surface px-4 py-3 text-sm text-tension"
             role="alert"
           >
             {error}

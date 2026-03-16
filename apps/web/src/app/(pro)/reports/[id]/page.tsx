@@ -110,11 +110,11 @@ export default function ProReportDetailPage() {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <p className="text-text-secondary mb-4">리포트를 찾을 수 없습니다</p>
+          <p className="text-ink-3 mb-4">리포트를 찾을 수 없습니다</p>
           <button
             type="button"
             onClick={() => router.back()}
-            className="text-sm text-brand-primary"
+            className="text-sm text-sky"
           >
             뒤로 가기
           </button>
@@ -130,7 +130,7 @@ export default function ProReportDetailPage() {
         <button
           type="button"
           onClick={() => router.back()}
-          className="flex items-center gap-1 text-sm text-text-secondary"
+          className="flex items-center gap-1 text-sm text-ink-3"
         >
           <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
             <polyline points="15,18 9,12 15,6" />
@@ -148,7 +148,7 @@ export default function ProReportDetailPage() {
 
       {publishing && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-6 shadow-xl">
+          <div className="bg-card rounded-xl p-6 shadow-card">
             <LoadingSpinner size="md" label="전송 중..." />
           </div>
         </div>

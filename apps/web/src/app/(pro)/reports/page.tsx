@@ -84,7 +84,7 @@ export default function ProReportsPage() {
   return (
     <div className="px-5 pt-safe-top">
       <header className="pt-4 pb-4">
-        <h1 className="text-xl font-bold text-text-primary">리포트</h1>
+        <h1 className="text-xl font-extrabold tracking-tight text-ink">리포트</h1>
       </header>
 
       {/* Filter Tabs */}
@@ -97,8 +97,8 @@ export default function ProReportsPage() {
             className={cn(
               'px-4 py-1.5 rounded-full text-sm font-medium transition-colors',
               activeTab === tab
-                ? 'bg-brand-primary text-white'
-                : 'bg-gray-100 text-text-secondary'
+                ? 'bg-ink text-dawn'
+                : 'bg-warm text-ink-3'
             )}
           >
             {tab === 'all' ? '전체' : tab === 'draft' ? '초안' : '전송됨'}
@@ -119,36 +119,36 @@ export default function ProReportsPage() {
               key={report.id}
               type="button"
               onClick={() => router.push(`/reports/${report.id}`)}
-              className="w-full card p-4 text-left hover:border-brand-primary/30 transition-colors"
+              className="w-full card p-4 text-left hover:border-ink/30 transition-colors"
             >
               <div className="flex items-center justify-between mb-1">
                 <span className={cn(
                   'text-xs px-2 py-0.5 rounded-full font-medium',
-                  report.status === 'draft' && 'bg-gray-100 text-gray-600',
-                  report.status === 'published' && 'bg-brand-primary/10 text-brand-primary',
-                  report.status === 'read' && 'bg-status-success/10 text-status-success'
+                  report.status === 'draft' && 'bg-warm text-ink-3',
+                  report.status === 'published' && 'bg-ink/10 text-ink',
+                  report.status === 'read' && 'bg-calm-surface text-calm'
                 )}>
                   {report.status === 'draft' ? '초안' : report.status === 'published' ? '전송됨' : '읽음'}
                 </span>
-                <span className="text-xs text-text-tertiary">
+                <span className="text-xs text-ink-4">
                   {formatRelativeTime(report.created_at)}
                 </span>
               </div>
-              <h3 className="text-sm font-medium text-text-primary truncate">
+              <h3 className="text-sm font-medium text-ink truncate">
                 {report.title || '(제목 없음)'}
               </h3>
-              <p className="text-xs text-text-secondary mt-0.5">
+              <p className="text-xs text-ink-3 mt-0.5">
                 {report.member_profiles?.display_name || '(회원 정보 없음)'}
               </p>
               {report.error_tags.length > 0 && (
                 <div className="flex gap-1 mt-2 flex-wrap">
                   {report.error_tags.slice(0, 3).map((tag) => (
-                    <span key={tag} className="text-[10px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">
+                    <span key={tag} className="text-[10px] bg-warm text-ink-3 px-1.5 py-0.5 rounded">
                       {tag}
                     </span>
                   ))}
                   {report.error_tags.length > 3 && (
-                    <span className="text-[10px] text-text-tertiary">
+                    <span className="text-[10px] text-ink-4">
                       +{report.error_tags.length - 3}
                     </span>
                   )}

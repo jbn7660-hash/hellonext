@@ -219,7 +219,7 @@ export default function CouponsPage() {
 
   return (
     <div className="px-5 pt-4 pb-24">
-      <h2 className="text-lg font-bold text-text-primary mb-4">쿠폰 관리</h2>
+      <h2 className="text-lg font-extrabold tracking-tight text-ink mb-4">쿠폰 관리</h2>
 
       {/* Stats Dashboard */}
       {stats && (
@@ -227,19 +227,19 @@ export default function CouponsPage() {
           <StatCard
             label="사용 가능"
             value={stats.available}
-            color="bg-brand-primary"
+            color="bg-ink"
             icon="📌"
           />
           <StatCard
             label="활성화"
             value={stats.activated}
-            color="bg-status-success"
+            color="bg-calm"
             icon="✓"
           />
           <StatCard
             label="만료"
             value={stats.expired}
-            color="bg-gray-300"
+            color="bg-ink-4"
             icon="✕"
           />
         </div>
@@ -247,11 +247,11 @@ export default function CouponsPage() {
 
       {/* PLG Free Coupon Section */}
       {stats && stats.plg_free_used < stats.plg_free_limit && (
-        <div className="card p-4 mb-4 border-l-4 border-brand-primary">
+        <div className="card p-4 mb-4 border-l-4 border-ink">
           <div className="flex items-start justify-between mb-3">
             <div className="flex-1">
-              <p className="text-sm font-semibold text-text-primary">무료 PLG 쿠폰</p>
-              <p className="text-xs text-text-secondary mt-0.5">
+              <p className="text-sm font-semibold text-ink">무료 PLG 쿠폰</p>
+              <p className="text-xs text-ink-3 mt-0.5">
                 {stats.plg_free_used}/{stats.plg_free_limit}장 사용
               </p>
             </div>
@@ -267,9 +267,9 @@ export default function CouponsPage() {
           </div>
 
           {/* Progress bar */}
-          <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
+          <div className="w-full h-1.5 bg-border rounded-full overflow-hidden">
             <div
-              className="h-full bg-brand-primary transition-all duration-300"
+              className="h-full bg-ink transition-all duration-300"
               style={{ width: `${plgUsagePercent}%` }}
               role="progressbar"
               aria-valuenow={stats.plg_free_used}
@@ -282,7 +282,7 @@ export default function CouponsPage() {
 
       {/* Purchase Bundles */}
       <div className="mb-6">
-        <h3 className="text-sm font-semibold text-text-primary mb-3">쿠폰 번들 구매</h3>
+        <h3 className="text-sm font-semibold text-ink mb-3">쿠폰 번들 구매</h3>
         <div className="grid grid-cols-3 gap-2">
           {COUPON_BUNDLES.map((bundle, idx) => (
             <button
@@ -290,20 +290,20 @@ export default function CouponsPage() {
               type="button"
               onClick={() => handlePurchaseBundle(idx)}
               className={cn(
-                'card p-3 text-center relative transition-all hover:shadow-md',
-                ('popular' in bundle) && (bundle as any).popular && 'ring-2 ring-brand-primary'
+                'card p-3 text-center relative transition-all hover:shadow-card',
+                ('popular' in bundle) && (bundle as any).popular && 'ring-2 ring-ink'
               )}
             >
               {('popular' in bundle) && (bundle as any).popular && (
-                <span className="absolute -top-2 left-1/2 -translate-x-1/2 bg-brand-primary text-white text-[10px] px-2 py-0.5 rounded-full">
+                <span className="absolute -top-2 left-1/2 -translate-x-1/2 bg-ink text-white text-[10px] px-2 py-0.5 rounded-full">
                   인기
                 </span>
               )}
-              <p className="text-lg font-bold text-text-primary">{bundle.quantity}장</p>
-              <p className="text-xs text-text-secondary mt-1">
+              <p className="text-lg font-bold text-ink">{bundle.quantity}장</p>
+              <p className="text-xs text-ink-3 mt-1">
                 {bundle.price.toLocaleString()}원
               </p>
-              <p className="text-[10px] text-text-tertiary">
+              <p className="text-[10px] text-ink-4">
                 {(bundle.price / bundle.quantity).toLocaleString()}원/장
               </p>
             </button>
@@ -323,8 +323,8 @@ export default function CouponsPage() {
               className={cn(
                 'text-xs px-3 py-1.5 rounded-full whitespace-nowrap font-medium transition-colors',
                 activeTab === tab.key
-                  ? 'bg-brand-primary text-white'
-                  : 'bg-gray-100 text-text-secondary hover:bg-gray-200'
+                  ? 'bg-ink text-white'
+                  : 'bg-warm text-ink-3 hover:bg-warm'
               )}
             >
               {tab.label}
@@ -338,7 +338,7 @@ export default function CouponsPage() {
           placeholder="코드 또는 회원명 검색..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/30"
+          className="w-full px-3 py-2 text-sm border border-border rounded-lg outline-none focus:border-ink focus:ring-1 focus:ring-ink/30"
           aria-label="쿠폰 검색"
         />
 
@@ -346,7 +346,7 @@ export default function CouponsPage() {
         <select
           value={sortBy}
           onChange={(e) => setSortBy(e.target.value as SortBy)}
-          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/30"
+          className="w-full px-3 py-2 text-sm border border-border rounded-lg outline-none focus:border-ink focus:ring-1 focus:ring-ink/30"
           aria-label="정렬 기준"
         >
           <option value="date_desc">최신순</option>
@@ -397,7 +397,7 @@ export default function CouponsPage() {
 
       {/* Toast notification */}
       {toastMsg && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-4 py-2 rounded-lg text-sm animate-fade-in">
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-ink text-white px-4 py-2 rounded-lg text-sm animate-fade-in">
           {toastMsg}
         </div>
       )}
@@ -418,8 +418,8 @@ function StatCard({ label, value, color, icon }: StatCardProps) {
       <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center mx-auto mb-1', color, 'bg-opacity-10')}>
         <span className="text-lg">{icon}</span>
       </div>
-      <p className="text-xl font-bold text-text-primary">{value}</p>
-      <p className="text-[10px] text-text-tertiary mt-0.5">{label}</p>
+      <p className="text-xl font-bold text-ink">{value}</p>
+      <p className="text-[10px] text-ink-4 mt-0.5">{label}</p>
     </div>
   );
 }
@@ -448,22 +448,22 @@ function CouponCard({
   const statusConfig: Record<string, { label: string; className: string; badge: string }> = {
     available: {
       label: '사용 가능',
-      className: 'bg-brand-primary/10 text-brand-primary',
+      className: 'bg-ink/10 text-sky',
       badge: '🔓',
     },
     activated: {
       label: '활성화',
-      className: 'bg-status-success/10 text-status-success',
+      className: 'bg-calm-surface text-calm',
       badge: '✓',
     },
     expired: {
       label: '만료',
-      className: 'bg-gray-100 text-text-tertiary',
+      className: 'bg-warm text-ink-4',
       badge: '✕',
     },
     revoked: {
       label: '취소',
-      className: 'bg-status-error/10 text-status-error',
+      className: 'bg-tension-surface text-tension',
       badge: '✕',
     },
   };
@@ -478,8 +478,8 @@ function CouponCard({
     <div
       className={cn(
         'card p-4 transition-all',
-        isSelected && 'ring-2 ring-brand-primary',
-        expiringSoon && 'border-l-4 border-status-warning'
+        isSelected && 'ring-2 ring-ink',
+        expiringSoon && 'border-l-4 border-caution'
       )}
     >
       {/* Main content */}
@@ -489,14 +489,14 @@ function CouponCard({
           type="checkbox"
           checked={isSelected}
           onChange={() => onSelect(coupon.id)}
-          className="mt-1 w-4 h-4 rounded border-gray-300"
+          className="mt-1 w-4 h-4 rounded border-border"
           aria-label={`쿠폰 ${coupon.code} 선택`}
         />
 
         {/* Content */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1 flex-wrap">
-            <code className="text-sm font-mono font-bold text-text-primary tracking-wider">
+            <code className="text-sm font-mono font-bold text-ink tracking-wider">
               {coupon.code}
             </code>
             <span
@@ -505,26 +505,26 @@ function CouponCard({
               {config.label}
             </span>
             {expiringSoon && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-status-warning/10 text-status-warning font-medium">
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-caution-surface text-caution font-medium">
                 ⚠️ 곧 만료
               </span>
             )}
           </div>
 
           {/* Details */}
-          <p className="text-[10px] text-text-tertiary mb-2">
+          <p className="text-[10px] text-ink-4 mb-2">
             {coupon.source === 'plg_free' ? '무료' : '구매'} · {new Date(coupon.created_at).toLocaleDateString('ko-KR')}
             {coupon.expires_at && ` · 만료: ${new Date(coupon.expires_at).toLocaleDateString('ko-KR')}`}
           </p>
 
           {/* Activated member info */}
           {coupon.status === 'activated' && coupon.member_name && (
-            <p className="text-xs text-text-secondary">회원: {coupon.member_name}</p>
+            <p className="text-xs text-ink-3">회원: {coupon.member_name}</p>
           )}
 
           {/* QR Code */}
           {showingQR && (
-            <div className="mt-3 pt-3 border-t border-gray-200">
+            <div className="mt-3 pt-3 border-t border-border">
               <img
                 src={generateQRCodeSVG(coupon.code, 150)}
                 alt={`QR code for ${coupon.code}`}
@@ -544,8 +544,8 @@ function CouponCard({
               className={cn(
                 'text-xs px-2 py-1 rounded font-medium transition-all whitespace-nowrap',
                 copied
-                  ? 'bg-status-success/10 text-status-success'
-                  : 'bg-gray-100 text-text-secondary hover:bg-gray-200'
+                  ? 'bg-calm-surface text-calm'
+                  : 'bg-warm text-ink-3 hover:bg-warm'
               )}
             >
               {copied ? '✓' : '복사'}
@@ -554,7 +554,7 @@ function CouponCard({
               type="button"
               onClick={onShare}
               title="공유"
-              className="text-xs px-2 py-1 rounded bg-gray-100 text-text-secondary hover:bg-gray-200 font-medium transition-all"
+              className="text-xs px-2 py-1 rounded bg-warm text-ink-3 hover:bg-warm font-medium transition-all"
             >
               공유
             </button>
@@ -564,7 +564,7 @@ function CouponCard({
               title="QR 코드"
               className={cn(
                 'text-xs px-2 py-1 rounded font-medium transition-all',
-                showingQR ? 'bg-brand-primary/10 text-brand-primary' : 'bg-gray-100 text-text-secondary hover:bg-gray-200'
+                showingQR ? 'bg-ink/10 text-sky' : 'bg-warm text-ink-3 hover:bg-warm'
               )}
             >
               QR
@@ -575,4 +575,3 @@ function CouponCard({
     </div>
   );
 }
-

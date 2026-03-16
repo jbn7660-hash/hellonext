@@ -222,29 +222,29 @@ export default function SubscriptionPage() {
 
   return (
     <div className="px-5 pt-4 pb-24">
-      <h2 className="text-lg font-bold text-text-primary mb-2">구독 & 플랜</h2>
+      <h2 className="text-lg font-extrabold tracking-tight text-ink mb-2">구독 & 플랜</h2>
 
       {/* Current Plan Badge */}
       {subscription && (
-        <div className="card p-4 mb-4 bg-brand-primary/5 border border-brand-primary/20">
+        <div className="card p-4 mb-4 bg-ink/5 border border-ink/20">
           <div className="flex items-start justify-between mb-2">
             <div>
-              <p className="text-xs text-text-tertiary uppercase tracking-wider mb-1">현재 플랜</p>
-              <p className="text-xl font-bold text-text-primary">{getPlanName(currentPlan)}</p>
+              <p className="text-xs text-ink-4 uppercase tracking-wider mb-1">현재 플랜</p>
+              <p className="text-xl font-bold text-ink">{getPlanName(currentPlan)}</p>
             </div>
-            <span className="text-sm font-semibold text-brand-primary">
+            <span className="text-sm font-semibold text-sky">
               {currentPlanData?.price === 0 ? '무료' : `${currentPlanData?.price?.toLocaleString()}원/월`}
             </span>
           </div>
 
           {subscription.status === 'canceled' && subscription.current_period_end && (
-            <p className="text-xs text-status-error">
+            <p className="text-xs text-tension">
               ⚠️ 해지 예정 · {new Date(subscription.current_period_end).toLocaleDateString('ko-KR')}까지 이용 가능
             </p>
           )}
 
           {subscription.current_period_end && subscription.status === 'active' && (
-            <p className="text-xs text-text-secondary">
+            <p className="text-xs text-ink-3">
               다음 결제일: {new Date(subscription.current_period_end).toLocaleDateString('ko-KR')}
             </p>
           )}
@@ -253,11 +253,11 @@ export default function SubscriptionPage() {
 
       {/* Trial Banner */}
       {isTrial && trialDaysRemaining > 0 && (
-        <div className="card p-4 mb-4 bg-status-warning/10 border border-status-warning/20">
-          <p className="text-sm font-semibold text-status-warning mb-2">
+        <div className="card p-4 mb-4 bg-caution-surface border border-caution/20">
+          <p className="text-sm font-semibold text-caution mb-2">
             트라이얼 진행 중 · {trialDaysRemaining}일 남음
           </p>
-          <p className="text-xs text-text-secondary mb-3">
+          <p className="text-xs text-ink-3 mb-3">
             트라이얼 기간이 끝나면 자동으로 결제됩니다.
           </p>
           <button
@@ -272,8 +272,8 @@ export default function SubscriptionPage() {
 
       {/* Error Message */}
       {paymentError && (
-        <div className="card p-3 mb-4 bg-status-error/10 border border-status-error/20">
-          <p className="text-sm text-status-error">{paymentError}</p>
+        <div className="card p-3 mb-4 bg-tension-surface border border-tension/20">
+          <p className="text-sm text-tension">{paymentError}</p>
         </div>
       )}
 
@@ -296,7 +296,7 @@ export default function SubscriptionPage() {
       )}
 
       {/* Plan Comparison */}
-      <h3 className="text-sm font-semibold text-text-primary mb-3">플랜 비교</h3>
+      <h3 className="text-sm font-semibold text-ink mb-3">플랜 비교</h3>
       <div className="space-y-3 mb-8">
         {SUBSCRIPTION_PLANS.map((plan) => {
           const isCurrent = plan.id === currentPlan;
@@ -307,26 +307,26 @@ export default function SubscriptionPage() {
               key={plan.id}
               className={cn(
                 'card p-4 relative transition-all',
-                ('popular' in plan) && (plan as any).popular && 'ring-2 ring-brand-primary',
-                isCurrent && 'bg-brand-primary/5'
+                ('popular' in plan) && (plan as any).popular && 'ring-2 ring-ink',
+                isCurrent && 'bg-ink/5'
               )}
             >
               {('popular' in plan) && (plan as any).popular && (
-                <span className="absolute -top-2 right-4 bg-brand-primary text-white text-[10px] px-2 py-0.5 rounded-full">
+                <span className="absolute -top-2 right-4 bg-ink text-white text-[10px] px-2 py-0.5 rounded-full">
                   추천
                 </span>
               )}
 
               <div className="flex items-start justify-between mb-3">
                 <div>
-                  <h4 className="text-base font-bold text-text-primary">{plan.name}</h4>
-                  <p className="text-sm text-text-secondary mt-0.5">
+                  <h4 className="text-base font-bold text-ink">{plan.name}</h4>
+                  <p className="text-sm text-ink-3 mt-0.5">
                     {plan.price === 0 ? '무료' : `${plan.price.toLocaleString()}원/월`}
                   </p>
                 </div>
 
                 {isCurrent ? (
-                  <span className="text-xs bg-brand-primary/10 text-brand-primary px-2 py-1 rounded-full font-medium whitespace-nowrap">
+                  <span className="text-xs bg-ink/10 text-sky px-2 py-1 rounded-full font-medium whitespace-nowrap">
                     ✓ 현재
                   </span>
                 ) : isUpgrade ? (
@@ -339,14 +339,14 @@ export default function SubscriptionPage() {
                     {processing ? '처리 중...' : '업그레이드'}
                   </button>
                 ) : (
-                  <span className="text-xs text-text-tertiary px-2 py-1">다운그레이드</span>
+                  <span className="text-xs text-ink-4 px-2 py-1">다운그레이드</span>
                 )}
               </div>
 
               <ul className="space-y-1.5">
                 {plan.features.map((feature, idx) => (
-                  <li key={idx} className="text-xs text-text-secondary flex items-center gap-1.5">
-                    <CheckIcon className="w-3.5 h-3.5 text-status-success flex-shrink-0" />
+                  <li key={idx} className="text-xs text-ink-3 flex items-center gap-1.5">
+                    <CheckIcon className="w-3.5 h-3.5 text-calm flex-shrink-0" />
                     {feature}
                   </li>
                 ))}
@@ -361,7 +361,7 @@ export default function SubscriptionPage() {
         <button
           type="button"
           onClick={handleCancelStart}
-          className="w-full text-center text-xs text-text-tertiary underline hover:text-text-primary py-3 transition-colors"
+          className="w-full text-center text-xs text-ink-4 underline hover:text-ink py-3 transition-colors"
         >
           구독 해지
         </button>
@@ -370,13 +370,13 @@ export default function SubscriptionPage() {
       {/* Cancel Confirmation Dialog */}
       {cancelStep !== 'none' && (
         <div className="fixed inset-0 bg-black/30 flex items-end z-50 animate-fade-in">
-          <div className="w-full bg-surface-primary rounded-t-3xl p-6 animate-slide-up">
+          <div className="w-full bg-card rounded-t-3xl p-6 animate-slide-up">
             {cancelStep === 'confirm' && (
               <div className="space-y-4">
-                <h3 className="text-lg font-bold text-text-primary">정말 구독을 해지하시겠어요?</h3>
-                <div className="bg-status-error/10 rounded-lg p-3 space-y-2">
-                  <p className="text-sm font-semibold text-status-error">주의사항</p>
-                  <ul className="text-xs text-text-secondary space-y-1">
+                <h3 className="text-lg font-extrabold tracking-tight text-ink">정말 구독을 해지하시겠어요?</h3>
+                <div className="bg-tension-surface rounded-lg p-3 space-y-2">
+                  <p className="text-sm font-semibold text-tension">주의사항</p>
+                  <ul className="text-xs text-ink-3 space-y-1">
                     <li>• 현재 결제 기간이 끝날 때까지 이용 가능</li>
                     <li>• 해지 후 무료 플랜으로 다운그레이드</li>
                     <li>• 우선 지원 등 Pro 기능 이용 불가</li>
@@ -386,7 +386,7 @@ export default function SubscriptionPage() {
                   <button
                     type="button"
                     onClick={handleCancelAbort}
-                    className="flex-1 card py-3 text-center font-medium text-text-secondary hover:bg-gray-50"
+                    className="flex-1 card py-3 text-center font-medium text-ink-3 hover:bg-dawn"
                   >
                     취소
                   </button>
@@ -403,7 +403,7 @@ export default function SubscriptionPage() {
 
             {cancelStep === 'reason' && (
               <div className="space-y-4">
-                <h3 className="text-lg font-bold text-text-primary">해지 사유를 선택해주세요</h3>
+                <h3 className="text-lg font-extrabold tracking-tight text-ink">해지 사유를 선택해주세요</h3>
                 <div className="space-y-2">
                   {[
                     '사용하지 않음',
@@ -419,13 +419,13 @@ export default function SubscriptionPage() {
                       className={cn(
                         'w-full p-3 text-left rounded-lg border-2 transition-colors',
                         cancelReason === reason
-                          ? 'border-brand-primary bg-brand-primary/5'
-                          : 'border-gray-200 hover:border-brand-primary/30'
+                          ? 'border-ink bg-ink/5'
+                          : 'border-border hover:border-ink/30'
                       )}
                     >
                       <p className={cn(
                         'text-sm font-medium',
-                        cancelReason === reason ? 'text-brand-primary' : 'text-text-primary'
+                        cancelReason === reason ? 'text-sky' : 'text-ink'
                       )}>
                         {reason}
                       </p>
@@ -443,7 +443,7 @@ export default function SubscriptionPage() {
                     '기타',
                   ].includes(cancelReason) ? '' : cancelReason}
                   onChange={(e) => setCancelReason(e.target.value)}
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-brand-primary"
+                  className="w-full px-3 py-2 text-sm border border-border rounded-lg outline-none focus:border-ink"
                   rows={3}
                 />
 
@@ -451,7 +451,7 @@ export default function SubscriptionPage() {
                   <button
                     type="button"
                     onClick={() => setCancelStep('confirm')}
-                    className="flex-1 card py-3 text-center font-medium text-text-secondary hover:bg-gray-50"
+                    className="flex-1 card py-3 text-center font-medium text-ink-3 hover:bg-dawn"
                   >
                     뒤로
                   </button>
@@ -471,10 +471,10 @@ export default function SubscriptionPage() {
 
       {/* Payment History */}
       <div>
-        <h3 className="text-sm font-semibold text-text-primary mb-3">결제 내역</h3>
+        <h3 className="text-sm font-semibold text-ink mb-3">결제 내역</h3>
         {payments.length === 0 ? (
           <div className="card p-4 text-center">
-            <p className="text-sm text-text-secondary">결제 내역이 없습니다</p>
+            <p className="text-sm text-ink-3">결제 내역이 없습니다</p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -503,20 +503,20 @@ function UsageCard({ label, used, limit, icon }: UsageCardProps) {
     <div className="card p-3">
       <div className="flex items-center gap-2 mb-2">
         <span className="text-lg">{icon}</span>
-        <p className="text-xs font-semibold text-text-primary">{label}</p>
+        <p className="text-xs font-semibold text-ink">{label}</p>
       </div>
       <p className={cn(
         'text-lg font-bold',
-        isWarning ? 'text-status-warning' : 'text-text-primary'
+        isWarning ? 'text-caution' : 'text-ink'
       )}>
         {used}{limit ? `/${limit}` : '+'}
       </p>
       {limit && (
-        <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden mt-2">
+        <div className="w-full h-1.5 bg-border rounded-full overflow-hidden mt-2">
           <div
             className={cn(
               'h-full transition-all',
-              isWarning ? 'bg-status-warning' : 'bg-status-success'
+              isWarning ? 'bg-caution' : 'bg-calm'
             )}
             style={{ width: `${Math.min(percent, 100)}%` }}
           />
@@ -539,21 +539,21 @@ function PaymentRow({ payment }: PaymentRowProps) {
     : '결제';
 
   return (
-    <div className="card p-4 flex items-center justify-between hover:shadow-md transition-shadow">
+    <div className="card p-4 flex items-center justify-between hover:shadow-card transition-shadow">
       <div className="flex-1">
-        <p className="text-sm font-medium text-text-primary">{paymentLabel}</p>
-        <p className="text-xs text-text-tertiary mt-0.5">
+        <p className="text-sm font-medium text-ink">{paymentLabel}</p>
+        <p className="text-xs text-ink-4 mt-0.5">
           {new Date(payment.created_at).toLocaleDateString('ko-KR')} · {payment.method}
         </p>
       </div>
       <div className="text-right flex items-center gap-3">
         <div>
-          <p className="text-sm font-bold text-text-primary">
+          <p className="text-sm font-bold text-ink">
             {payment.amount.toLocaleString()}원
           </p>
           <p className={cn(
             'text-xs font-medium',
-            isSuccessful ? 'text-status-success' : 'text-status-error'
+            isSuccessful ? 'text-calm' : 'text-tension'
           )}>
             {isSuccessful ? '✓ 완료' : payment.status}
           </p>
@@ -563,7 +563,7 @@ function PaymentRow({ payment }: PaymentRowProps) {
             href={payment.receipt_url}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-xs text-brand-primary hover:underline whitespace-nowrap"
+            className="text-xs text-sky hover:underline whitespace-nowrap"
           >
             영수증
           </a>

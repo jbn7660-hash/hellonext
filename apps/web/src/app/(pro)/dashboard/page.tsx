@@ -217,7 +217,7 @@ export default function ProDashboardPage() {
   return (
     <div
       ref={containerRef}
-      className="flex flex-col min-h-screen bg-surface-secondary overflow-y-auto"
+      className="flex flex-col min-h-screen bg-dawn overflow-y-auto"
     >
       {/* Main Content */}
       <main className="flex-1 px-5 pt-6 pb-32">
@@ -229,8 +229,8 @@ export default function ProDashboardPage() {
 
         {/* Header */}
         <header className="mb-6 animate-fade-in">
-          <p className="text-sm text-text-secondary">안녕하세요,</p>
-          <h1 className="text-2xl font-bold text-text-primary mt-1">
+          <p className="text-sm text-ink-3">안녕하세요,</p>
+          <h1 className="text-2xl font-extrabold tracking-tight text-ink mt-1">
             {(profile as { studio_name?: string })?.studio_name ?? '프로'}님
           </h1>
         </header>
@@ -254,26 +254,26 @@ export default function ProDashboardPage() {
         {/* Performance Summary */}
         <div className="card p-4 mb-6 animate-fade-in">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold text-text-primary">레슨 현황</h3>
+            <h3 className="text-sm font-semibold text-ink">레슨 현황</h3>
             <span className={cn(
               'text-xs font-medium px-2 py-1 rounded-full',
               reportTrend > 0
-                ? 'bg-status-success/10 text-status-success'
+                ? 'bg-calm-surface text-calm'
                 : reportTrend < 0
-                  ? 'bg-status-warning/10 text-status-warning'
-                  : 'bg-gray-100 text-text-tertiary'
+                  ? 'bg-caution-surface text-caution'
+                  : 'bg-dawn text-ink-4'
             )}>
               {reportTrend > 0 ? '↑' : reportTrend < 0 ? '↓' : '→'} {Math.abs(reportTrend)}
             </span>
           </div>
           <div className="flex gap-4">
             <div className="flex-1">
-              <p className="text-xs text-text-secondary mb-1">이번주</p>
-              <p className="text-lg font-bold text-text-primary">{stats.this_week_reports}건</p>
+              <p className="text-xs text-ink-3 mb-1">이번주</p>
+              <p className="text-lg font-bold text-ink">{stats.this_week_reports}건</p>
             </div>
             <div className="flex-1">
-              <p className="text-xs text-text-secondary mb-1">지난주</p>
-              <p className="text-lg font-bold text-text-tertiary">{stats.last_week_reports}건</p>
+              <p className="text-xs text-ink-3 mb-1">지난주</p>
+              <p className="text-lg font-bold text-ink-4">{stats.last_week_reports}건</p>
             </div>
           </div>
         </div>
@@ -284,12 +284,12 @@ export default function ProDashboardPage() {
         {/* Notifications Preview */}
         {stats.notifications && stats.notifications.length > 0 && (
           <div className="mb-6 animate-fade-in">
-            <h3 className="text-sm font-semibold text-text-primary mb-2">최근 알림</h3>
+            <h3 className="text-sm font-semibold text-ink mb-2">최근 알림</h3>
             <div className="space-y-2">
               {stats.notifications.slice(0, 3).map((notif) => (
                 <div
                   key={notif.id}
-                  className="card p-3 flex items-start gap-3 hover:bg-gray-50 transition-colors cursor-pointer"
+                  className="card p-3 flex items-start gap-3 hover:bg-dawn transition-colors cursor-pointer"
                 >
                   <div className="text-lg shrink-0">
                     {notif.type === 'new_video' && '🎥'}
@@ -297,10 +297,10 @@ export default function ProDashboardPage() {
                     {notif.type === 'report_published' && '📋'}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs text-text-secondary">
+                    <p className="text-xs text-ink-3">
                       {formatRelativeTime(notif.created_at)}
                     </p>
-                    <p className="text-sm text-text-primary">{notif.message}</p>
+                    <p className="text-sm text-ink">{notif.message}</p>
                   </div>
                 </div>
               ))}
@@ -316,9 +316,9 @@ export default function ProDashboardPage() {
         {/* Member List Section */}
         <section className="animate-fade-in">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-text-primary">회원 목록</h2>
+            <h2 className="text-lg font-extrabold tracking-tight text-ink">회원 목록</h2>
             {members.length > 0 && (
-              <span className="text-xs px-2 py-1 rounded-full bg-brand-50 text-brand-700 font-medium">
+              <span className="text-xs px-2 py-1 rounded-full bg-warm text-ink font-medium">
                 {sortedMembers.length}명
               </span>
             )}
@@ -412,26 +412,26 @@ function StatCard({
 }) {
   return (
     <div className={cn(
-      'card p-3 text-center hover:shadow-md transition-shadow duration-200',
-      accent && 'border-brand-primary/30 bg-brand-primary/5'
+      'card p-3 text-center hover:shadow-card transition-shadow duration-200',
+      accent && 'border-ink/30 bg-ink/5'
     )}>
       <div className="flex items-baseline justify-center gap-1">
         <p className={cn(
           'text-2xl font-bold',
-          accent ? 'text-brand-primary' : 'text-text-primary'
+          accent ? 'text-sky' : 'text-ink'
         )}>
           {value}
         </p>
         {trend !== undefined && trend !== 0 && (
           <p className={cn(
             'text-xs font-semibold',
-            trend > 0 ? 'text-status-success' : 'text-status-warning'
+            trend > 0 ? 'text-calm' : 'text-caution'
           )}>
             {trend > 0 ? '↑' : '↓'}
           </p>
         )}
       </div>
-      <p className="text-xs text-text-secondary mt-0.5">{label}</p>
+      <p className="text-xs text-ink-3 mt-0.5">{label}</p>
     </div>
   );
 }
@@ -453,22 +453,22 @@ function MemberCard({
     <button
       type="button"
       onClick={onTap}
-      className="w-full card p-4 flex items-center gap-3 text-left hover:border-brand-primary/30 transition-colors"
+      className="w-full card p-4 flex items-center gap-3 text-left hover:border-ink/30 transition-colors"
     >
       {/* Avatar */}
-      <div className="w-10 h-10 rounded-full bg-brand-primary/10 flex items-center justify-center text-brand-primary font-semibold text-sm shrink-0">
+      <div className="w-10 h-10 rounded-full bg-ink/10 flex items-center justify-center text-sky font-semibold text-sm shrink-0">
         {member.display_name.charAt(0)}
       </div>
 
       {/* Info */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <span className="font-medium text-sm text-text-primary truncate">
+          <span className="font-medium text-sm text-ink truncate">
             {member.display_name}
           </span>
         </div>
         <div className="flex items-center gap-2 mt-0.5">
-          <span className="text-xs text-text-secondary">
+          <span className="text-xs text-ink-3">
             리포트 {member.recent_report_count}건 (30일)
           </span>
           {member.latest_feel_check && (
@@ -481,13 +481,13 @@ function MemberCard({
 
       {/* Pending indicator */}
       {member.pending_memo_count > 0 && (
-        <div className="w-5 h-5 rounded-full bg-status-warning text-white text-[10px] font-bold flex items-center justify-center shrink-0">
+        <div className="w-5 h-5 rounded-full bg-caution text-white text-[10px] font-bold flex items-center justify-center shrink-0">
           {member.pending_memo_count}
         </div>
       )}
 
       {/* Chevron */}
-      <svg className="w-4 h-4 text-text-tertiary shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+      <svg className="w-4 h-4 text-ink-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
         <polyline points="9,18 15,12 9,6" />
       </svg>
     </button>
@@ -502,14 +502,14 @@ function AIWarningsBanner({ members }: { members: MemberSummary[] }) {
   if (warningMembers.length === 0) return null;
 
   return (
-    <div className="mb-6 p-4 rounded-xl bg-status-warning/10 border border-status-warning/20 animate-fade-in">
+    <div className="mb-6 p-4 rounded-xl bg-caution-surface border border-caution/20 animate-fade-in">
       <div className="flex items-start gap-3">
         <span className="text-2xl flex-shrink-0">⚠️</span>
         <div>
-          <p className="text-sm font-semibold text-text-primary">
+          <p className="text-sm font-semibold text-ink">
             컨디션 주의 회원 ({warningMembers.length}명)
           </p>
-          <p className="text-xs text-text-secondary mt-1">
+          <p className="text-xs text-ink-3 mt-1">
             {warningMembers.map((m) => m.display_name).join(', ')}님이 컨디션 불량을 보고했습니다.
           </p>
         </div>
@@ -531,12 +531,12 @@ function OnboardingChecklist({ className }: { className?: string }) {
 
   return (
     <div className={cn('card p-4', className)}>
-      <h3 className="text-sm font-semibold text-text-primary mb-3">시작 가이드</h3>
+      <h3 className="text-sm font-semibold text-ink mb-3">시작 가이드</h3>
       <div className="mb-3 flex items-center justify-between">
-        <span className="text-xs text-text-secondary">{completedCount}/{items.length} 완료</span>
-        <div className="h-2 flex-1 bg-gray-200 rounded-full ml-2 overflow-hidden">
+        <span className="text-xs text-ink-3">{completedCount}/{items.length} 완료</span>
+        <div className="h-2 flex-1 bg-border rounded-full ml-2 overflow-hidden">
           <div
-            className="h-full bg-brand-primary transition-all duration-300"
+            className="h-full bg-ink transition-all duration-300"
             style={{ width: `${progress}%` }}
           />
         </div>
@@ -545,26 +545,26 @@ function OnboardingChecklist({ className }: { className?: string }) {
         {items.map((item, idx) => (
           <div
             key={idx}
-            className="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 transition-colors"
+            className="flex items-center justify-between p-2 rounded-lg hover:bg-dawn transition-colors"
           >
             <div className="flex items-center gap-2 flex-1">
               <div className={cn(
                 'w-4 h-4 rounded-full flex items-center justify-center text-xs flex-shrink-0',
                 item.completed
-                  ? 'bg-status-success text-white'
-                  : 'border-2 border-gray-200'
+                  ? 'bg-calm text-white'
+                  : 'border-2 border-border'
               )}>
                 {item.completed && '✓'}
               </div>
               <span className={cn(
                 'text-xs',
-                item.completed ? 'text-text-tertiary line-through' : 'text-text-secondary'
+                item.completed ? 'text-ink-4 line-through' : 'text-ink-3'
               )}>
                 {item.label}
               </span>
             </div>
             {!item.completed && (
-              <button type="button" className="text-xs text-brand-primary font-medium hover:underline">
+              <button type="button" className="text-xs text-sky font-medium hover:underline">
                 {item.action}
               </button>
             )}
@@ -596,7 +596,7 @@ function FABMenu({
           <button
             type="button"
             onClick={onInviteMember}
-            className="absolute bottom-20 right-0 w-12 h-12 rounded-full bg-status-success text-white shadow-lg flex items-center justify-center animate-slide-up hover:scale-110 transition-transform"
+            className="absolute bottom-20 right-0 w-12 h-12 rounded-full bg-calm text-white shadow-card flex items-center justify-center animate-slide-up hover:scale-110 transition-transform"
             title="회원 초대"
           >
             👥
@@ -604,7 +604,7 @@ function FABMenu({
           <button
             type="button"
             onClick={onVoiceMemo}
-            className="absolute bottom-32 right-0 w-12 h-12 rounded-full bg-brand-primary text-white shadow-lg flex items-center justify-center animate-slide-up hover:scale-110 transition-transform"
+            className="absolute bottom-32 right-0 w-12 h-12 rounded-full bg-ink text-dawn shadow-card flex items-center justify-center animate-slide-up hover:scale-110 transition-transform"
             title="음성 메모"
           >
             🎤
@@ -612,7 +612,7 @@ function FABMenu({
           <button
             type="button"
             onClick={onNewReport}
-            className="absolute bottom-44 right-0 w-12 h-12 rounded-full bg-brand-primary text-white shadow-lg flex items-center justify-center animate-slide-up hover:scale-110 transition-transform"
+            className="absolute bottom-44 right-0 w-12 h-12 rounded-full bg-ink text-dawn shadow-card flex items-center justify-center animate-slide-up hover:scale-110 transition-transform"
             title="새 리포트"
           >
             📋
@@ -625,7 +625,7 @@ function FABMenu({
         type="button"
         onClick={onToggle}
         className={cn(
-          'w-14 h-14 rounded-full bg-brand-primary text-white shadow-lg flex items-center justify-center transition-all duration-200 hover:scale-110',
+          'w-14 h-14 rounded-full bg-ink text-dawn shadow-card flex items-center justify-center transition-all duration-200 hover:scale-110',
           isOpen && 'rotate-45'
         )}
         title="빠른 작업"

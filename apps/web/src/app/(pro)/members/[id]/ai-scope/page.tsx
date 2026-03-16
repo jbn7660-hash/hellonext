@@ -153,22 +153,22 @@ export default function AIScopePage() {
         <button
           type="button"
           onClick={() => router.back()}
-          className="flex items-center gap-1 text-sm text-text-secondary mb-3"
+          className="flex items-center gap-1 text-sm text-ink-3 mb-3"
         >
           <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
             <polyline points="15,18 9,12 15,6" />
           </svg>
           돌아가기
         </button>
-        <h1 className="text-xl font-bold text-text-primary">AI 피드백 범위 설정</h1>
-        <p className="text-sm text-text-secondary mt-1">
+        <h1 className="text-xl font-extrabold tracking-tight text-ink">AI 피드백 범위 설정</h1>
+        <p className="text-sm text-ink-3 mt-1">
           {memberName}님에게 표시되는 AI 관찰 항목과 톤을 설정합니다
         </p>
       </div>
 
       {/* Tone Level Selection */}
       <section className="mt-6">
-        <h2 className="text-base font-semibold text-text-primary mb-3">AI 톤 레벨</h2>
+        <h2 className="text-base font-semibold text-ink mb-3">AI 톤 레벨</h2>
         <div className="space-y-2">
           {TONE_OPTIONS.map((opt) => (
             <button
@@ -178,20 +178,20 @@ export default function AIScopePage() {
               className={cn(
                 'w-full text-left card p-4 transition-colors',
                 toneLevel === opt.value
-                  ? 'border-brand-primary bg-brand-primary/5'
-                  : 'hover:border-gray-300'
+                  ? 'border-ink bg-ink/5'
+                  : 'hover:border-border'
               )}
             >
               <div className="flex items-center justify-between mb-1">
-                <span className="text-sm font-medium text-text-primary">{opt.label}</span>
+                <span className="text-sm font-medium text-ink">{opt.label}</span>
                 {toneLevel === opt.value && (
-                  <span className="text-xs bg-brand-primary text-white px-2 py-0.5 rounded-full">
+                  <span className="text-xs bg-ink text-dawn px-2 py-0.5 rounded-full">
                     선택됨
                   </span>
                 )}
               </div>
-              <p className="text-xs text-text-secondary">{opt.description}</p>
-              <p className="text-xs text-text-tertiary mt-1 italic">{opt.example}</p>
+              <p className="text-xs text-ink-3">{opt.description}</p>
+              <p className="text-xs text-ink-4 mt-1 italic">{opt.example}</p>
             </button>
           ))}
         </div>
@@ -200,8 +200,8 @@ export default function AIScopePage() {
       {/* Error Pattern Visibility */}
       <section className="mt-8">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-base font-semibold text-text-primary">교정 항목 공개/비공개</h2>
-          <span className="text-xs text-text-tertiary">
+          <h2 className="text-base font-semibold text-ink">교정 항목 공개/비공개</h2>
+          <span className="text-xs text-ink-4">
             비공개 {hiddenPatterns.size}개
           </span>
         </div>
@@ -210,7 +210,7 @@ export default function AIScopePage() {
           const posInfo = getSwingPosition(position);
           return (
             <div key={position} className="mb-4">
-              <h3 className="text-xs font-medium text-text-tertiary uppercase mb-2">
+              <h3 className="text-xs font-medium text-ink-4 uppercase mb-2">
                 {posInfo?.nameKo ?? position} ({position})
               </h3>
               <div className="space-y-1">
@@ -221,22 +221,22 @@ export default function AIScopePage() {
                       key={pattern.code}
                       type="button"
                       onClick={() => togglePattern(pattern.code)}
-                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-gray-50 transition-colors"
+                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-dawn transition-colors"
                     >
                       <div className="flex items-center gap-2">
-                        <span className="text-xs font-mono text-text-tertiary w-14">
+                        <span className="text-xs font-mono text-ink-4 w-14">
                           {pattern.code}
                         </span>
                         <span className={cn(
                           'text-sm',
-                          isHidden ? 'text-text-tertiary line-through' : 'text-text-primary'
+                          isHidden ? 'text-ink-4 line-through' : 'text-ink'
                         )}>
                           {pattern.nameKo}
                         </span>
                       </div>
                       <div className={cn(
                         'w-10 h-6 rounded-full transition-colors flex items-center px-0.5',
-                        isHidden ? 'bg-gray-200' : 'bg-brand-primary'
+                        isHidden ? 'bg-border' : 'bg-ink'
                       )}>
                         <div className={cn(
                           'w-5 h-5 rounded-full bg-white shadow transition-transform',
@@ -253,7 +253,7 @@ export default function AIScopePage() {
       </section>
 
       {/* Save Button (sticky) */}
-      <div className="fixed bottom-0 left-0 right-0 p-5 bg-surface-primary border-t border-gray-100 safe-area-bottom">
+      <div className="fixed bottom-0 left-0 right-0 p-5 bg-card border-t border-border safe-area-bottom">
         <button
           type="button"
           onClick={handleSave}

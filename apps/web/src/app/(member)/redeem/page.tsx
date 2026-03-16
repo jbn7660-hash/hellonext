@@ -208,9 +208,9 @@ export default function RedeemPage() {
     return (
       <div className="px-5 pt-8 pb-12 flex flex-col items-center text-center">
         {/* Success icon */}
-        <div className="w-20 h-20 rounded-full bg-status-success/10 flex items-center justify-center mb-6 animate-scale-in">
+        <div className="w-20 h-20 rounded-full bg-calm-surface flex items-center justify-center mb-6 animate-scale-in">
           <svg
-            className="w-10 h-10 text-status-success"
+            className="w-10 h-10 text-calm"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -222,11 +222,11 @@ export default function RedeemPage() {
         </div>
 
         {/* Success message */}
-        <h2 className="text-xl font-bold text-text-primary mb-2">쿠폰 활성화 완료!</h2>
-        <p className="text-sm text-text-secondary mb-6">{result.message}</p>
+        <h2 className="text-xl font-extrabold tracking-[-0.3px] text-ink mb-2">쿠폰 활성화 완료!</h2>
+        <p className="text-sm text-ink-3 mb-6">{result.message}</p>
 
         {/* Pro profile card */}
-        <div className="card p-4 mb-6 w-full">
+        <div className="bg-card border border-border rounded-2xl shadow-card p-4 mb-6 w-full">
           <div className="flex items-center gap-3 mb-3">
             {result.pro_image_url ? (
               <img
@@ -235,20 +235,20 @@ export default function RedeemPage() {
                 className="w-12 h-12 rounded-full object-cover"
               />
             ) : (
-              <div className="w-12 h-12 rounded-full bg-brand-primary/10 flex items-center justify-center flex-shrink-0">
-                <span className="text-lg font-semibold text-brand-primary">
+              <div className="w-12 h-12 rounded-full bg-warmth-surface flex items-center justify-center flex-shrink-0">
+                <span className="text-lg font-semibold text-warmth">
                   {result.pro_name.charAt(0)}
                 </span>
               </div>
             )}
             <div className="text-left">
-              <p className="font-semibold text-text-primary">{result.pro_name} 프로</p>
+              <p className="font-semibold text-ink">{result.pro_name} 프로</p>
               {result.specialization && (
-                <p className="text-xs text-text-secondary">{result.specialization}</p>
+                <p className="text-xs text-ink-3">{result.specialization}</p>
               )}
             </div>
           </div>
-          <p className="text-xs text-text-tertiary">
+          <p className="text-xs text-ink-4">
             유효기간: ~{new Date(result.expires_at).toLocaleDateString('ko-KR')}
           </p>
         </div>
@@ -258,14 +258,14 @@ export default function RedeemPage() {
           <button
             type="button"
             onClick={() => router.push('/practice')}
-            className="btn-primary py-3 text-sm font-semibold"
+            className="w-full py-3 rounded-xl bg-ink text-dawn text-sm font-semibold"
           >
             연습 시작하기
           </button>
           <button
             type="button"
             onClick={handleReset}
-            className="card py-3 text-center text-sm font-medium text-text-secondary hover:bg-gray-50 transition-colors"
+            className="bg-card border border-border rounded-2xl shadow-card py-3 text-center text-sm font-medium text-ink-3 hover:bg-dawn transition-colors"
           >
             다른 쿠폰 입력
           </button>
@@ -277,8 +277,8 @@ export default function RedeemPage() {
   return (
     <div className="px-5 pt-8 pb-12">
       {/* Header */}
-      <h2 className="text-lg font-bold text-text-primary mb-2">쿠폰 등록</h2>
-      <p className="text-sm text-text-secondary mb-8">
+      <h2 className="text-lg font-extrabold tracking-[-0.4px] text-ink mb-2">쿠폰 등록</h2>
+      <p className="text-sm text-ink-3 mb-8">
         프로님에게 받은 쿠폰 코드를 입력하세요
       </p>
 
@@ -302,11 +302,11 @@ export default function RedeemPage() {
             className={cn(
               'w-full text-center text-2xl font-mono font-bold tracking-[0.3em] py-4 px-6',
               'border-2 rounded-2xl outline-none transition-all',
-              'placeholder:text-text-tertiary/30 placeholder:tracking-[0.3em]',
+              'placeholder:text-ink-4/30 placeholder:tracking-[0.3em]',
               'disabled:opacity-50 disabled:cursor-not-allowed',
               state === 'error'
-                ? 'border-status-error bg-status-error/5 focus:ring-2 focus:ring-status-error/30'
-                : 'border-gray-200 focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/10 bg-surface-primary'
+                ? 'border-tension bg-tension-surface focus:ring-2 focus:ring-tension/30 text-ink'
+                : 'border-border focus:border-ink-4 focus:ring-2 focus:ring-ink/10 bg-card text-ink'
             )}
           />
 
@@ -320,7 +320,7 @@ export default function RedeemPage() {
                 setState('idle');
                 inputRef.current?.focus();
               }}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-primary transition-colors"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-4 hover:text-ink transition-colors"
               aria-label="쿠폰 코드 지우기"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
@@ -338,13 +338,13 @@ export default function RedeemPage() {
             id="code-hint"
             className={cn(
               'text-xs font-medium',
-              isCodeValid ? 'text-status-success' : 'text-text-tertiary'
+              isCodeValid ? 'text-calm' : 'text-ink-4'
             )}
           >
             {cleanCode.length}/{COUPON_CODE_LENGTH}자
           </p>
           {isCodeValid && (
-            <p className="text-xs text-status-success flex items-center gap-1">
+            <p className="text-xs text-calm flex items-center gap-1">
               <span>✓</span> 올바른 형식입니다
             </p>
           )}
@@ -353,10 +353,10 @@ export default function RedeemPage() {
 
       {/* Error message with retry option */}
       {state === 'error' && errorMsg && (
-        <div className="mb-4 p-3 bg-status-error/10 border border-status-error/20 rounded-xl animate-fade-in">
-          <p className="text-sm text-status-error text-center mb-2">{errorMsg}</p>
+        <div className="mb-4 p-3 bg-tension-surface border border-tension/20 rounded-2xl animate-fade-in">
+          <p className="text-sm text-tension text-center mb-2">{errorMsg}</p>
           {networkRetryCount > 0 && (
-            <p className="text-xs text-text-tertiary text-center">
+            <p className="text-xs text-ink-4 text-center">
               재시도: {networkRetryCount}회
             </p>
           )}
@@ -371,11 +371,10 @@ export default function RedeemPage() {
         aria-busy={state === 'loading'}
         className={cn(
           'w-full py-3.5 text-base font-semibold rounded-2xl transition-all',
+          'bg-ink text-dawn',
           'disabled:opacity-40 disabled:cursor-not-allowed',
-          'focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-primary',
-          state === 'loading'
-            ? 'btn-primary'
-            : 'btn-primary hover:opacity-90'
+          'focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ink',
+          state !== 'loading' && 'hover:opacity-90'
         )}
       >
         {state === 'loading' ? (
@@ -392,10 +391,10 @@ export default function RedeemPage() {
       </button>
 
       {/* Help text */}
-      <p className="text-xs text-text-tertiary text-center mt-6">
+      <p className="text-xs text-ink-4 text-center mt-6">
         쿠폰은 활성화 후 90일간 유효합니다.
         <br />
-        <span className="block mt-1">문제가 있으신가요? <button type="button" className="text-brand-primary hover:underline">지원팀에 문의</button></span>
+        <span className="block mt-1">문제가 있으신가요? <button type="button" className="text-sky hover:underline">지원팀에 문의</button></span>
       </p>
     </div>
   );

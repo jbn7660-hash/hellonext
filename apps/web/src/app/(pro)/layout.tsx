@@ -63,7 +63,7 @@ export default function ProLayout({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <div className="flex flex-col min-h-screen bg-surface-secondary">
+    <div className="flex flex-col min-h-screen bg-dawn">
       {/* Main content */}
       <main className="flex-1 pb-20">{children}</main>
 
@@ -83,7 +83,7 @@ export default function ProLayout({ children }: { children: ReactNode }) {
       />
 
       {/* Bottom Tab Bar */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-surface-primary border-t border-gray-100 z-30 safe-area-bottom">
+      <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-30 safe-area-bottom">
         <div className="flex items-center justify-around h-16 px-safe-left px-safe-right">
           {PRO_TABS.map((tab) => {
             const isActive = pathname.startsWith(tab.href);
@@ -95,7 +95,7 @@ export default function ProLayout({ children }: { children: ReactNode }) {
                 className={cn(
                   'flex flex-col items-center justify-center flex-1 h-full gap-0.5',
                   'transition-colors duration-200',
-                  isActive ? 'text-brand-primary' : 'text-text-tertiary'
+                  isActive ? 'text-ink' : 'text-ink-4'
                 )}
               >
                 <tab.icon className="w-5 h-5" filled={isActive} />

@@ -80,11 +80,11 @@ export function FeelCheck({ videoId, onComplete }: FeelCheckProps) {
   }, [selected, notes, videoId, onComplete]);
 
   return (
-    <div className="px-5 py-8">
-      <h2 className="text-lg font-bold text-text-primary text-center mb-2">
+    <div className="px-6 pt-2.5 pb-9 bg-night text-night-text">
+      <h2 className="text-lg font-extrabold tracking-[-0.4px] text-night-text text-center mb-2">
         방금 스윙, 어떤 느낌이었나요?
       </h2>
-      <p className="text-sm text-text-secondary text-center mb-8">
+      <p className="text-[13px] font-medium leading-relaxed text-night-muted text-center mb-8">
         느낌을 먼저 기록해야 AI 관찰을 볼 수 있어요
       </p>
 
@@ -98,16 +98,19 @@ export function FeelCheck({ videoId, onComplete }: FeelCheckProps) {
             className={cn(
               'flex flex-col items-center gap-2 p-4 rounded-2xl border-2 transition-all w-24 active:scale-95',
               selected === f.value
-                ? 'border-brand-primary bg-brand-primary/5 scale-105'
-                : 'border-gray-200 hover:border-gray-300'
+                ? 'border-night-text bg-[rgba(228,224,218,0.04)] scale-105'
+                : 'border-night-border hover:border-night-muted'
             )}
             aria-pressed={selected === f.value}
             aria-label={`기분: ${f.label}`}
           >
-            <span className="text-3xl" role="img" aria-hidden="true">{f.emoji}</span>
             <span className={cn(
-              'text-xs font-medium text-center',
-              selected === f.value ? 'text-brand-primary' : 'text-text-secondary'
+              'text-3xl transition-all',
+              selected === f.value ? 'grayscale-0 opacity-100' : 'grayscale-[0.4] opacity-40'
+            )} role="img" aria-hidden="true">{f.emoji}</span>
+            <span className={cn(
+              'text-xs font-semibold text-center',
+              selected === f.value ? 'text-night-text' : 'text-night-muted'
             )}>
               {f.label}
             </span>
@@ -122,7 +125,7 @@ export function FeelCheck({ videoId, onComplete }: FeelCheckProps) {
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             placeholder="더 자세히 말해주세요 (선택사항)"
-            className="input-field w-full h-20 resize-none text-sm"
+            className="w-full h-20 resize-none text-sm bg-night-card border border-night-border rounded-sm text-night-text placeholder:text-night-muted p-3.5 outline-none focus:border-night-muted"
             maxLength={200}
           />
         </div>
@@ -130,8 +133,8 @@ export function FeelCheck({ videoId, onComplete }: FeelCheckProps) {
 
       {/* Error message */}
       {submitError && (
-        <div className="mb-4 p-3 rounded-lg bg-status-error/10 border border-status-error/20">
-          <p className="text-sm text-status-error">{submitError}</p>
+        <div className="mb-4 p-3 rounded-lg bg-tension-surface border border-[rgba(212,91,91,0.15)]">
+          <p className="text-sm text-tension">{submitError}</p>
         </div>
       )}
 
@@ -141,7 +144,7 @@ export function FeelCheck({ videoId, onComplete }: FeelCheckProps) {
         onClick={handleSubmit}
         disabled={!selected || submitting}
         className={cn(
-          'btn-primary w-full py-3 text-sm transition-opacity',
+          'w-full py-4 rounded-md bg-night-text text-night text-[15px] font-bold cursor-pointer active:scale-[0.97] active:opacity-90 transition-opacity',
           (!selected || submitting) && 'opacity-50 cursor-not-allowed'
         )}
         aria-busy={submitting}
